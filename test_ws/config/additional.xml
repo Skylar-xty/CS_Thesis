@@ -1,0 +1,5 @@
+<additional>
+    <!-- Define RSU（POI） -->
+    <poi id="rsu_1" x="-700.00" y="750.00" color="1,0,0" layer="1" />
+    <poi id="rsu_2" x="-600.00" y="750.00" color="0,1,0" layer="1" />
+</additional>

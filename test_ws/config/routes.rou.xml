@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+  <!-- 定义环路 -->
+  <route id="circular_route" edges="origin E1 E2 E3 destination E4" />
+
+  <!-- 定义车辆，直接嵌套路径 -->
+  <vehicle id="0" depart="0">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="1" depart="2">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="2" depart="3">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="3" depart="5">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="4" depart="7">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="5" depart="8">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="6" depart="9">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="7" depart="10">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="8" depart="11">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+  <vehicle id="9" depart="12">
+    <route edges="origin E1 E2 E3 destination E4" />
+  </vehicle>
+</routes>
