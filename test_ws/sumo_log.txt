@@ -1,17 +1,16 @@
-***Starting server on port 33815 ***
+***Starting server on port 59885 ***
 Loading net-file from './config/test1/net.net.xml' ... done (3ms).
-Loading additional-files from './config/additional.xml' ... done (0ms).
+Loading additional-files from './config/additional.xml' ... done (1ms).
 Loading route-files incrementally from './config/test1/routes.rou.xml'
 Loading done.
 Simulation started with time: 0.00.
-Simulation ended at time: 227.00.
-Reason: TraCI requested termination.
+Simulation ended at time: 16.00.
 Performance:
- Duration: 47.50s
- TraCI-Duration: 0.26s
- Real time factor: 4.77905
- UPS: 21.453083
+ Duration: 3.25s
+ TraCI-Duration: 0.04s
+ Real time factor: 4.91854
+ UPS: 8.300031
 Vehicles:
- Inserted: 50
- Running: 0
+ Inserted: 4 (Loaded: 50)
+ Running: 3
  Waiting: 0

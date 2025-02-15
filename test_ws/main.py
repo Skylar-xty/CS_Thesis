@@ -38,17 +38,41 @@ def main():
         if '1' in vehicles and '4' in vehicles:
             sender = vehicles['1']
             receiver = vehicles['4']
-
-            # Sender creates and signs a message
+            # **1️⃣ 发送方 1 生成 BLS 签名**
             message = "Hello from Vehicle 1!"
-            signature = sender.sign_message(message)
-            print(f"Vehicle {sender.id} sent a signed message: {message}")
+            signature = sender.bls_sign(message)
+            print(f"🚗 Vehicle {sender.id} sent a signed message: {message}")
 
-            # Receiver verifies the message and signature
-            if receiver.verify_signature(message, signature, sender.public_key):
-                print(f"Vehicle {receiver.id} verified the message successfully!")
+            # **2️⃣ 接收方 4 验证 BLS 签名**
+            message = "error!"
+            if receiver.bls_verify(message, signature, sender.bls_public_key):
+                print(f"✅ Vehicle {receiver.id} verified the signature from {sender.id}!")
             else:
-                print(f"Vehicle {receiver.id} failed to verify the message.")
+                print(f"❌ Signature verification failed.")
+
+            # **3️⃣ 发送方 1 使用 ECC 加密**
+            encrypted_message = sender.encrypt_message(receiver.public_key, message)
+            print(f"🔐 Vehicle {sender.id} encrypted a message for Vehicle {receiver.id}.")
+
+            # **4️⃣ 接收方 4 使用 ECC 解密**
+            decrypted_message = receiver.decrypt_message(sender.public_key, encrypted_message)
+            print(f"🔓 Vehicle {receiver.id} decrypted the message: {decrypted_message}")
+
+            # **5️⃣ 检查解密数据是否正确**
+            if decrypted_message == message:
+                print(f"✅ Secure communication between {sender.id} and {receiver.id} is successful!")
+            else:
+                print(f"❌ Communication integrity compromised!")
+            # # Sender creates and signs a message
+            # message = "Hello from Vehicle 1!"
+            # signature = sender.sign_message(message)
+            # print(f"Vehicle {sender.id} sent a signed message: {message}")
+
+            # # Receiver verifies the message and signature
+            # if receiver.verify_signature(message, signature, sender.public_key):
+            #     print(f"Vehicle {receiver.id} verified the message successfully!")
+            # else:
+            #     print(f"Vehicle {receiver.id} failed to verify the message.")
 
         # Example communication between two vehicles
         # if '1' in vehicles and '4' in vehicles:
