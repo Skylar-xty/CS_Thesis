@@ -80,10 +80,12 @@ class Vehicle:
             self.position = traci.vehicle.getPosition(self.id)
             self.speed = traci.vehicle.getSpeed(self.id)
             self.route = traci.vehicle.getRoute(self.id)
-            self.accel = traci.vehicle.getAccleration(self.id)
+            self.accel = traci.vehicle.getAcceleration(self.id)
 
             collision_list = traci.simulation.getCollidingVehiclesIDList()
-            lane_change = traci.vehicle.getLaneChangeState(self.id)
+            lane_change = traci.vehicle.getLaneChangeState(self.id, 0)[0]  #TODO, -1/1, return tuple
+            print(f"DEBUG: lane_change = {lane_change}")  # 🚀 先看看返回值是什么
+
             # 🆕 计算信任因素
             self.anomaly_driving = int(self.speed > 30 or abs(self.accel) > 3 or lane_change > 0)  # TODO
             self.collision = int(self.id in collision_list)

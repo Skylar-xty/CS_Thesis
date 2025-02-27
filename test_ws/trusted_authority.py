@@ -13,7 +13,7 @@ def init_db():
     cursor = conn.cursor()
     # **🗑️ 清空 `vehicles` 表，防止主键冲突**
     cursor.execute("DROP TABLE IF EXISTS vehicles")
-    
+
     cursor.execute('''CREATE TABLE IF NOT EXISTS vehicles (
                         veh_id TEXT PRIMARY KEY,
                         trust_score REAL DEFAULT 1.0,
@@ -85,7 +85,7 @@ def update_trust():
                       trust_score=?, anomaly_driving=?, collision=?, 
                       data_reliability=?, data_consistency=?, valid_certification=?, neighbor_trust=? 
                       WHERE veh_id=?''',
-                   (data["trustScore"], data["anomaly_driving"], data["collision"], 
+                   (data["trust_score"], data["anomaly_driving"], data["collision"], 
                     data["data_reliability"], data["data_consistency"], 
                     data["valid_certification"], data["neighbor_trust"], veh_id))
     conn.commit()
