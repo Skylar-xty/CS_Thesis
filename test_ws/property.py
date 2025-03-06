@@ -26,7 +26,7 @@ class Vehicle:
         self.commRange = commRange
 
         self.certificate = certificate  # Digital certificate for authenticatio
-
+        self.verified_certificates = {}  # 记录已验证的证书
         # Dynamic attributes
         self.position = (0, 0)
         self.speed = 0
@@ -73,6 +73,13 @@ class Vehicle:
         self.optimizer = optim.Adam(self.model.parameters(), lr=0.01)
         self.criterion = nn.MSELoss()
 
+    def has_verified_certificate(self, target_veh_id):
+        """ 检查是否已经验证了目标车辆的证书 """
+        return self.verified_certificates.get(target_veh_id, False)
+
+    def set_verified_certificate(self, target_veh_id, status=True):
+        """ 设置目标车辆的证书验证状态 """
+        self.verified_certificates[target_veh_id] = status
     # Basic: Update attributes and Display infomation             
     def update_dynamic_attributes(self, traci):
         """Update dynamic attributes if the vehicle exists in the network."""

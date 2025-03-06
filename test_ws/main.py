@@ -4,6 +4,8 @@ import time
 import requests
 from property import Vehicle
 from environments import RSU
+
+from cryptography.hazmat.primitives import serialization
 sumoBinary = checkBinary('sumo-gui')
 
 EXPERIMENT = 'test1'
@@ -23,8 +25,8 @@ def main():
  
     # vehilce init
     for vehId in all_VEHICLES:
-        register_vehicle(vehId)
         vehicles[vehId] = Vehicle(vehId, 'passenger', 33.33, 4.5, 2.0, 100, 50)
+        register_vehicle(vehId)
     # # 🚗 车辆A 想与 车辆B 通信
     # if vehicles[0].decide_communication("1"):
     #     print("📡 开始数据交换...")
@@ -38,6 +40,26 @@ def main():
             veh.display_info() 
             veh.upload_trust_to_ta()
             
+            # 查询目标车辆信任评分
+            target_veh_id = "1"
+            trust_info = get_vehicle_info(target_veh_id)
+
+            if trust_info and trust_info["trust_score"] >=0:
+                print(f"✅ 车辆 {veh.id} 想要与 {target_veh_id} 进行安全通信...")
+
+                # 🆕 第一次通信时查询证书
+                if not veh.has_verified_certificate(target_veh_id):
+                    certificate = get_certificate(target_veh_id)
+                    if certificate:
+                        if verify_certificate(certificate):  # 证书验证
+                            veh.set_verified_certificate(target_veh_id, True)
+                            print(f"📜 证书验证成功，允许通信！")
+                        else:
+                            print(f"❌ 证书验证失败，终止通信！")
+                            continue
+                print("📡 开始数据交换...")
+            else:
+                print(f"❌ 车辆 {target_veh_id} 信任值过低，拒绝通信")    
         traci.simulationStep()
  
     traci.close()
@@ -63,9 +85,71 @@ def startSim():
 
 def register_vehicle(veh_id):
     """向 TA 服务器注册车辆"""
-    response = requests.post("http://localhost:5000/register_vehicle", json={"veh_id": veh_id})
-    print(response.json())
+    """ 🚗 车辆注册到 TA，并获取证书 """
+    url = "http://localhost:5000/register_vehicle"
 
+    if veh_id not in vehicles:
+        print(f"❌ 车辆 {veh_id} 未初始化，无法注册！")
+        return
+    ecc_public_key_pem = vehicles[veh_id].public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ).decode()  # 转换为字符串
+    data = {
+        "veh_id": veh_id,
+        "ecc_public_key": ecc_public_key_pem,
+        "bls_public_key": bytes(vehicles[veh_id].bls_public_key).hex()
+    }
+    
+    response = requests.post(url, json=data)
+    if response.status_code == 200:
+        print(f"✅ 车辆 {veh_id} 注册成功")
+    else:
+        print(f"❌ 车辆 {veh_id} 注册失败: {response.json()}")
+    # response = requests.post("http://localhost:5000/register_vehicle", json={"veh_id": veh_id})
+    # print(response.json())
+
+
+def get_vehicle_info(veh_id):
+    """ 🔍 查询目标车辆的信任值 """
+    url = f"http://localhost:5000/get_vehicle_info?veh_id={veh_id}"
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        print(f"🚗 车辆 {veh_id} 信息: 信任值 {data['trust_score']}, 碰撞次数 {data['collision']}")
+        return data
+    else:
+        print(f"❌ 车辆 {veh_id} 信息查询失败")
+        return None
+
+def get_certificate(veh_id):
+    """ 查询目标车辆的证书 """
+    url = f"http://localhost:5000/get_vehicle_certificate?veh_id={veh_id}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+        print(f"🚗 车辆 {veh_id} 的证书信息：\n{data['certificate']}")
+        return data["certificate"]
+    else:
+        print(f"❌ 车辆 {veh_id} 证书查询失败")
+        return None
+
+def verify_certificate(certificate):
+    """ 🚗 向 TA 服务器发送证书验证请求 """
+    url = "http://localhost:5000/verify_certificate"
+    data = {"certificate": certificate}
+
+    response = requests.post(url, json=data)
+    
+    if response.status_code == 200:
+        print("✅ 证书验证成功")
+        return True
+    else:
+        print("❌ 证书验证失败:", response.json())
+        return False
+    
 def shouldContinueSim():
     """Checks that the simulation should continue running.
     Returns:

@@ -1,16 +1,16 @@
-***Starting server on port 50483 ***
-Loading net-file from './config/test1/net.net.xml' ... done (2ms).
+***Starting server on port 47673 ***
+Loading net-file from './config/test1/net.net.xml' ... done (3ms).
 Loading additional-files from './config/additional.xml' ... done (0ms).
 Loading route-files incrementally from './config/test1/routes.rou.xml'
 Loading done.
 Simulation started with time: 0.00.
-Simulation ended at time: 33.00.
+Simulation ended at time: 19.00.
 Performance:
- Duration: 7.16s
- TraCI-Duration: 1.32s
- Real time factor: 4.61023
- UPS: 15.507125
+ Duration: 4.17s
+ TraCI-Duration: 0.82s
+ Real time factor: 4.55964
+ UPS: 9.359251
 Vehicles:
- Inserted: 8 (Loaded: 50)
- Running: 5
- Waiting: 1
+ Inserted: 5 (Loaded: 50)
+ Running: 4
+ Waiting: 0
