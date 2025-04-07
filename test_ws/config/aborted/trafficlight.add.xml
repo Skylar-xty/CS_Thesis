@@ -1,0 +1,12 @@
+<!-- <additional>
+    <tlLogic id="TL1" type="static" programID="myProgram" offset="0">
+        <!-- phase: 绿灯 east-west, 红灯 north-south -->
+        <phase duration="30" state="GrGr"/>  
+        <!-- 黄灯 all -->
+        <phase duration="5" state="yryr"/>  
+        <!-- phase: 红灯 east-west, 绿灯 north-south -->
+        <phase duration="30" state="rGrG"/>
+        <!-- 黄灯 all -->
+        <phase duration="5" state="ryry"/>
+    </tlLogic>
+</additional> -->

@@ -84,6 +84,7 @@ class Vehicle:
     def update_dynamic_attributes(self, traci):
         """Update dynamic attributes if the vehicle exists in the network."""
         if self.is_in_network(traci):
+            print(f"{self.id} is updating...")
             self.position = traci.vehicle.getPosition(self.id)
             self.speed = traci.vehicle.getSpeed(self.id)
             self.route = traci.vehicle.getRoute(self.id)

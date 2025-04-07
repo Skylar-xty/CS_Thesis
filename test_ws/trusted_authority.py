@@ -71,18 +71,30 @@ class CertificateAuthority:
             .sign(self.private_key, hashes.SHA256())
 
         return certificate
-
     def verify_certificate(self, certificate):
-        """ 验证证书是否由 CA 颁发 """
+        """验证该证书是否由 CA 自身签发"""
         try:
-            certificate.public_key().verify(
+            # 使用 CA 的公钥验证证书签名
+            self.certificate.public_key().verify(
                 certificate.signature,
                 certificate.tbs_certificate_bytes,
-                ec.ECDSA(hashes.SHA256())
+                ec.ECDSA(certificate.signature_hash_algorithm)
             )
             return True
-        except:
+        except Exception as e:
+            print("❌ 证书验证失败:", e)
             return False
+    # def verify_certificate(self, certificate):
+    #     """ 验证证书是否由 CA 颁发 """
+    #     try:
+    #         certificate.public_key().verify(
+    #             certificate.signature,
+    #             certificate.tbs_certificate_bytes,
+    #             ec.ECDSA(hashes.SHA256())
+    #         )
+    #         return True
+    #     except:
+    #         return False
 
 ca = CertificateAuthority()
 

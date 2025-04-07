@@ -6,19 +6,13 @@ from property import Vehicle
 from environments import RSU
 
 from cryptography.hazmat.primitives import serialization
-from task import TASKS
 sumoBinary = checkBinary('sumo-gui')
 
 EXPERIMENT = 'test1'
 RED = [255, 0, 0]
 EDGE_ID = 'closed'
-all_VEHICLES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
- '11', '12', '13', '14', '15', '16', '17', '18', '19']
-registered_vehicles = []
-all_sensor = []
+all_VEHICLES = ['0','1','2','3','4','5','6','7','8','9']
 VEHICLES = ['1', '4', '8']
-
-register_done = False
 # Define RSUs
 rsus = [
     RSU("rsu_1", (1000, 2000), 500, 100),
@@ -27,50 +21,31 @@ rsus = [
 vehicles = {} # Dictionary to store all vehicle objects
  
 def main():
-    global register_done,all_VEHICLES,registered_vehicles,all_sensor,vehicles
     startSim()
-    
+ 
     # vehilce init
-    # for vehId in all_VEHICLES:
-    #     vehicles[vehId] = Vehicle(vehId, 'passenger', 33.33, 4.5, 2.0, 100, 50)  
-
-    # RSU init
-    for poi_id in traci.poi.getIDList():
-        if traci.poi.getType(poi_id) == "sensor_unit":
-            all_sensor.append(poi_id)
+    for vehId in all_VEHICLES:
+        vehicles[vehId] = Vehicle(vehId, 'passenger', 33.33, 4.5, 2.0, 100, 50)
+        register_vehicle(vehId)
     # # 🚗 车辆A 想与 车辆B 通信
     # if vehicles[0].decide_communication("1"):
     #     print("📡 开始数据交换...")
     # else:
     #     print("❌ 终止通信")
     while shouldContinueSim():
-        if not register_done:
-            # 每步检查是否有新出发车辆
-            new_veh_ids = traci.simulation.getDepartedIDList()
-            for veh_id in new_veh_ids:
-                if veh_id == "19":
-                    register_done = True
-                if veh_id not in registered_vehicles:
-                    print(f"🚗 新车辆 {veh_id} 出发，开始注册")
-                    vehicles[veh_id] = Vehicle(veh_id, 'passenger', 33.33, 4.5, 2.0, 100, 50)
-                    register_vehicle(veh_id)
-                    registered_vehicles.append(veh_id)
-            # 更新并显示车辆动态属性
-            for veh in vehicles.values():
 
-                veh.update_dynamic_attributes(traci)
-                veh.display_info() 
-                veh.upload_trust_to_ta()
-        else:
-        # 通信
-        # 查询目标车辆信任评分
-            veh_id = "0"
-            veh = vehicles[veh_id]
+        # 更新并显示车辆动态属性
+        for veh in vehicles.values():
+            veh.update_dynamic_attributes(traci)
+            veh.display_info() 
+            veh.upload_trust_to_ta()
+            
+            # 查询目标车辆信任评分
             target_veh_id = "1"
             trust_info = get_vehicle_info(target_veh_id)
 
             if trust_info and trust_info["trust_score"] >=0:
-                print(f"✅ 车辆 {veh_id} 想要与 {target_veh_id} 进行安全通信...")
+                print(f"✅ 车辆 {veh.id} 想要与 {target_veh_id} 进行安全通信...")
 
                 # 🆕 第一次通信时查询证书
                 if not veh.has_verified_certificate(target_veh_id):
@@ -98,11 +73,10 @@ def startSim():
             '--net-file', f'./config/{EXPERIMENT}/net.net.xml',
             # '--net-file', './config/network_new.net.xml',
             # '--route-files', './config/trips.trips.xml',
-            '--route-files', f'./config/{EXPERIMENT}/modified_routes2.rou.xml',
+            '--route-files', f'./config/{EXPERIMENT}/routes.rou.xml',
             '--delay', '200',
             '--gui-settings-file', './config/viewSettings.xml',
-            '--additional-files', f'./config/{EXPERIMENT}/poi.add.xml',
-            # '--additional-files', './config/additional.xml',
+            '--additional-files', './config/additional.xml',
             '--log', "sumo_log.txt",
             '--start'
  
