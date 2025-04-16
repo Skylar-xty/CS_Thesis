@@ -1,18 +1,15 @@
-Warning: Environment variable SUMO_HOME is not set properly, disabling XML validation. Set 'auto' or 'always' for web lookups.
-***Starting server on port 58213 ***
+***Starting server on port 44879 ***
 Loading net-file from './config/test1/net.net.xml' ... done (3ms).
-Loading additional-files from './config/test1/poi.add.xml' ... done (0ms).
+Loading additional-files from './config/test1/poi.add.xml' ... done (7ms).
 Loading route-files incrementally from './config/test1/modified_routes2.rou.xml'
 Loading done.
 Simulation started with time: 0.00.
-Error: tcpip::Socket::recvAndCheck @ recv: peer shutdown
-Quitting (on error).
-Simulation ended at time: 96.00.
+Simulation ended at time: 125.00.
 Performance:
- Duration: 22.46s
- TraCI-Duration: 2.04s
- Real time factor: 4.27427
- UPS: 44.968833
+ Duration: 25.05s
+ TraCI-Duration: 2.18s
+ Real time factor: 4.98922
+ UPS: 63.462920
 Vehicles:
  Inserted: 20
  Running: 20

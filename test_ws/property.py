@@ -50,18 +50,6 @@ class Vehicle:
         self.private_key = ec.generate_private_key(ec.SECP256R1())
         self.public_key = self.private_key.public_key()
 
-        # BLS 群阶（group order）
-        # GROUP_ORDER = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffffffffffff
-
-        # def generate_valid_bls_key():
-        #     """ 生成合法的 BLS 私钥（小于群阶） """
-        #     while True:
-        #         rand_num = int.from_bytes(os.urandom(32), "big") % GROUP_ORDER
-        #         if rand_num > 0:  # 确保私钥不为 0
-        #             return PrivateKey.from_bytes(rand_num.to_bytes(32, "big"))
-        # seed: bytes = bytes([0,  50, 6,  244, 24,  199, 1,  25,  52,  88,  192,
-        #                 19, 18, 12, 89,  6,   220, 18, 102, 58,  209, 82,
-        #                 12, 62, 89, 110, 182, 9,   44, 20,  254, 22])
         seed = os.urandom(32)
         # BLS keys
         # self.bls_private_key = PrivateKey.from_seed(os.urandom(32))

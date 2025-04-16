@@ -3,7 +3,7 @@ import sqlite3
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives.asymmetric import rsa, ec
+from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
 from cryptography.hazmat.primitives import hashes
 import datetime
 from cryptography.hazmat.primitives import serialization
@@ -29,20 +29,16 @@ class CertificateAuthority:
             x509.NameAttribute(NameOID.COMMON_NAME, "IoV Root CA"),
         ])
 
-        self.certificate = x509.CertificateBuilder().subject_name(
-            subject
-        ).issuer_name(
-            issuer
-        ).public_key(
-            self.private_key.public_key()
-        ).serial_number(
-            x509.random_serial_number()
-        ).not_valid_before(
-            datetime.datetime.utcnow()
-        ).not_valid_after(
-            datetime.datetime.utcnow() + datetime.timedelta(days=3650)  # 10年有效期
-        ).sign(self.private_key, hashes.SHA256())
-
+        self.certificate = (
+            x509.CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(issuer)
+            .public_key(self.private_key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(datetime.datetime.utcnow())
+            .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=3650))
+            .sign(self.private_key, hashes.SHA256())
+        )
     def issue_certificate(self, vehicle_id, ecc_public_key, bls_public_key):
         """ CA 颁发证书，包含 ECC 和 BLS 公钥 """
         subject = x509.Name([
@@ -78,7 +74,9 @@ class CertificateAuthority:
             self.certificate.public_key().verify(
                 certificate.signature,
                 certificate.tbs_certificate_bytes,
-                ec.ECDSA(certificate.signature_hash_algorithm)
+                padding.PKCS1v15(),   # 用 RSA 的 padding模式
+                certificate.signature_hash_algorithm
+                # ec.ECDSA(certificate.signature_hash_algorithm)
             )
             return True
         except Exception as e:
