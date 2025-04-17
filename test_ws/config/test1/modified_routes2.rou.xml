@@ -20,6 +20,7 @@
 -->
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <vType id="aggressive" accel="3.5" decel="8.0" speedFactor="1.5" speedDev="0.1" color="255,0,0"/>
     <vehicle id="0" depart="0.00" departSpeed="max">
         <route edges="-E0 E0 E1 E8 -E3 -E2 E2 E3 -E3 -E2 E9 E4 E5 -E5 -E4 -E9 E2 E3 -E3 -E2 E2 E3 -E8 -E1"/>
     </vehicle>
@@ -59,7 +60,7 @@
     <vehicle id="12" depart="60.00" departSpeed="max">
         <route edges="E4 E5 -E11 -E8 -E1 -E0 E6 -E6 E0 E7 E10 -E4 -E9 E2 E3 -E3 -E2 -E6 E0 E1 E8 -E3 E10"/>
     </vehicle>
-    <vehicle id="13" depart="60.00" departSpeed="max">
+    <vehicle id="13" type="aggressive" depart="60.00" departSpeed="max">
         <route edges="-E10 E3 E11 -E5 -E4 -E9 E2 E10 E5"/>
     </vehicle>
     <vehicle id="14" depart="70.00" departSpeed="max">

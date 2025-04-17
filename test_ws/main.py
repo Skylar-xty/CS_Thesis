@@ -3,10 +3,11 @@ import traci
 import time
 import requests
 from property import Vehicle
-from environments import RSU
 
 from cryptography.hazmat.primitives import serialization
 from task import TASKS
+import threading
+from monitor_multi import POIMonitorMulti
 sumoBinary = checkBinary('sumo-gui')
 
 EXPERIMENT = 'test1'
@@ -15,39 +16,45 @@ EDGE_ID = 'closed'
 all_VEHICLES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10',
  '11', '12', '13', '14', '15', '16', '17', '18', '19']
 registered_vehicles = []
+
 all_sensor = []
+poi_positions = []
+
 VEHICLES = ['1', '4', '8']
+# TA_POI_ID = "poi_1"
 
 register_done = False
-# Define RSUs
-rsus = [
-    RSU("rsu_1", (1000, 2000), 500, 100),
-    RSU("rsu_2", (1500, 2500), 500, 50)
-]
+
 vehicles = {} # Dictionary to store all vehicle objects
  
+# 💡 后台监测线程逻辑
+def monitor_thread_fn(monitor):
+    while shouldContinueSim():
+        monitor.scan_all(vehicles)
+        time.sleep(0.1)
+
 def main():
     global register_done,all_VEHICLES,registered_vehicles,all_sensor,vehicles
     startSim()
-    
-    # vehilce init
-    # for vehId in all_VEHICLES:
-    #     vehicles[vehId] = Vehicle(vehId, 'passenger', 33.33, 4.5, 2.0, 100, 50)  
 
     # RSU init
     for poi_id in traci.poi.getIDList():
         if traci.poi.getType(poi_id) == "sensor_unit":
             all_sensor.append(poi_id)
-    # # 🚗 车辆A 想与 车辆B 通信
-    # if vehicles[0].decide_communication("1"):
-    #     print("📡 开始数据交换...")
-    # else:
-    #     print("❌ 终止通信")
+            x, y = traci.poi.getPosition(poi_id)
+            poi_positions.append((x,y))
+            print(f"📢 sensor{poi_id} inited at ({x:.2f},{y:.2f})")
+    monitor = POIMonitorMulti(poi_positions)
+    # 启动后台线程
+    threading.Thread(target=monitor_thread_fn, args=(monitor,), daemon=True).start()
+
     while shouldContinueSim():
         if not register_done:
             # 每步检查是否有新出发车辆
             new_veh_ids = traci.simulation.getDepartedIDList()
             for veh_id in new_veh_ids:
+                if veh_id == "13":
+                    traci.vehicle.setColor("13", (255,0,0))
                 if veh_id == "19":
                     register_done = True
                 if veh_id not in registered_vehicles:
@@ -57,34 +64,52 @@ def main():
                     registered_vehicles.append(veh_id)
             # 更新并显示车辆动态属性
             for veh in vehicles.values():
-
                 veh.update_dynamic_attributes(traci)
-                veh.display_info() 
+                # veh.display_info() 
                 veh.upload_trust_to_ta()
         else:
+            # 异常行为 1
+            # 🚨 控制车辆13在接近 POI 时执行异常行为（超速 + 闯红灯）
+            if "13" in traci.vehicle.getIDList():
+                x, y = traci.vehicle.getPosition("13")
+                if abs(x - 50.09) < 5 and abs(y - 49.60) < 5:
+                    try:
+                        # 禁用所有速度/红灯/安全限制（允许闯红灯）
+                        traci.vehicle.setSpeedMode("13", 0b00000)
+
+                        # 强制设置为超速（40m/s）
+                        traci.vehicle.setSpeed("13", 40)
+
+                        # 可视化上色（红色）
+                        traci.vehicle.setColor("13", (255, 0, 0))
+
+                        print("📢 异常车辆 13 接近 POI：执行闯红灯 + 超速！")
+                    except Exception as e:
+                        print("❌ 设置车辆13异常行为失败：", e)
+
         # 通信
         # 查询目标车辆信任评分
-            veh_id = "0"
-            veh = vehicles[veh_id]
-            target_veh_id = "1"
-            trust_info = get_vehicle_info(target_veh_id)
+            # veh_id = "0"
+            # veh = vehicles[veh_id]
+            # target_veh_id = "1"
+            # trust_info = get_vehicle_info(target_veh_id)
 
-            if trust_info and trust_info["trust_score"] >=0:
-                print(f"✅ 车辆 {veh_id} 想要与 {target_veh_id} 进行安全通信...")
+            # if trust_info and trust_info["trust_score"] >=0:
+            #     print(f"✅ 车辆 {veh_id} 想要与 {target_veh_id} 进行安全通信...")
 
-                # 🆕 第一次通信时查询证书
-                if not veh.has_verified_certificate(target_veh_id):
-                    certificate = get_certificate(target_veh_id)
-                    if certificate:
-                        if verify_certificate(certificate):  # 证书验证
-                            veh.set_verified_certificate(target_veh_id, True)
-                            print(f"📜 证书验证成功，允许通信！")
-                        else:
-                            print(f"❌ 证书验证失败，终止通信！")
-                            continue
-                print("📡 开始数据交换...")
-            else:
-                print(f"❌ 车辆 {target_veh_id} 信任值过低，拒绝通信")    
+            #     # 🆕 第一次通信时查询证书
+            #     if not veh.has_verified_certificate(target_veh_id):
+            #         certificate = get_certificate(target_veh_id)
+            #         if certificate:
+            #             if verify_certificate(certificate):  # 证书验证
+            #                 veh.set_verified_certificate(target_veh_id, True)
+            #                 print(f"📜 证书验证成功，允许通信！")
+            #             else:
+            #                 print(f"❌ 证书验证失败，终止通信！")
+            #                 continue
+            #     print("📡 开始数据交换...")
+            # else:
+            #     print(f"❌ 车辆 {target_veh_id} 信任值过低，拒绝通信")    
         traci.simulationStep()
  
     traci.close()

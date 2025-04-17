@@ -1,16 +1,17 @@
-***Starting server on port 44879 ***
+***Starting server on port 47819 ***
 Loading net-file from './config/test1/net.net.xml' ... done (3ms).
 Loading additional-files from './config/test1/poi.add.xml' ... done (7ms).
 Loading route-files incrementally from './config/test1/modified_routes2.rou.xml'
 Loading done.
 Simulation started with time: 0.00.
-Simulation ended at time: 125.00.
+Error: Answered with error to command 0xa4: Vehicle '6' is not known.
+Simulation ended at time: 344.00.
 Performance:
- Duration: 25.05s
- TraCI-Duration: 2.18s
- Real time factor: 4.98922
- UPS: 63.462920
+ Duration: 68.77s
+ TraCI-Duration: 2.28s
+ Real time factor: 5.00233
+ UPS: 67.473243
 Vehicles:
  Inserted: 20
- Running: 20
+ Running: 3
  Waiting: 0

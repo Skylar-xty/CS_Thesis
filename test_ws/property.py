@@ -57,9 +57,9 @@ class Vehicle:
         self.bls_public_key = self.bls_private_key.get_g1()
 
         # FL Model
-        self.model = FLModel()
-        self.optimizer = optim.Adam(self.model.parameters(), lr=0.01)
-        self.criterion = nn.MSELoss()
+        # self.model = FLModel()
+        # self.optimizer = optim.Adam(self.model.parameters(), lr=0.01)
+        # self.criterion = nn.MSELoss()
 
     def has_verified_certificate(self, target_veh_id):
         """ 检查是否已经验证了目标车辆的证书 """
@@ -80,7 +80,7 @@ class Vehicle:
 
             collision_list = traci.simulation.getCollidingVehiclesIDList()
             lane_change = traci.vehicle.getLaneChangeState(self.id, 0)[0]  #TODO, -1/1, return tuple
-            print(f"DEBUG: lane_change = {lane_change}")  # 🚀 先看看返回值是什么
+            # print(f"DEBUG: lane_change = {lane_change}")  # 🚀 先看看返回值是什么
 
             # 🆕 计算信任因素
             self.anomaly_driving = int(self.speed > 30 or abs(self.accel) > 3 or lane_change > 0)  # TODO
@@ -246,6 +246,7 @@ class Vehicle:
         else:
             print(f"🚨 拒绝通信: 车辆 {target_veh_id} 信任值过低")
             return False
+
 
 class FLModel(nn.Module):
     def __init__(self):
