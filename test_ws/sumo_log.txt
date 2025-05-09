@@ -1,0 +1,18 @@
+***Starting server on port 50233 ***
+Loading net-file from './config/test1/net.net.xml' ... done (3ms).
+Loading additional-files from './config/test1/poi.add.xml' ... done (7ms).
+Loading route-files incrementally from './config/test1/modified_routes2.rou.xml'
+Loading done.
+Simulation started with time: 0.00.
+Error: tcpip::Socket::recvAndCheck @ recv: peer shutdown
+Quitting (on error).
+Simulation ended at time: 217.00.
+Performance:
+ Duration: 59.01s
+ TraCI-Duration: 43.50s
+ Real time factor: 3.67759
+ UPS: 55.062197
+Vehicles:
+ Inserted: 20
+ Running: 16
+ Waiting: 0
