@@ -91,7 +91,7 @@ class Vehicle:
     # update trust to ta
     def upload_trust_to_ta(self):
         """将信任值上传到 TA"""
-        response = requests.post("http://localhost:5000/update_trust_factors", json={
+        response = requests.post("http://localhost:5000/update_trust_factors_vehicle", json={
             "veh_id": self.id,
             "trust_score": self.trustScore,
             "anomaly_driving": self.anomaly_driving,
@@ -101,7 +101,7 @@ class Vehicle:
             "valid_certification": self.valid_certification,
             "neighbor_trust": self.neighbor_trust
         })
-        print(response.json())
+        # print(response.json())
 
     def is_in_network(self, traci):
         """Check if the vehicle is currently in the network."""

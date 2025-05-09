@@ -187,6 +187,37 @@ def get_vehicle_info():
 def update_trust():
     data = request.json
     veh_id = data["veh_id"]
+    anomaly_value = data["anomaly_driving"]
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute('''UPDATE vehicles SET anomaly_driving=? WHERE veh_id=?''',
+                   (anomaly_value, veh_id))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"message": f"✅ 车辆 {veh_id} 的 anomaly_driving 已更新为 {anomaly_value}"}), 200
+# def update_trust():
+#     data = request.json
+#     veh_id = data["veh_id"]
+
+#     conn = connect_db()
+#     cursor = conn.cursor()
+#     cursor.execute('''UPDATE vehicles SET 
+#                       trust_score=?, anomaly_driving=?, collision=?, 
+#                       data_reliability=?, data_consistency=?, valid_certification=?, neighbor_trust=? 
+#                       WHERE veh_id=?''',
+#                    (data["trust_score"], data["anomaly_driving"], data["collision"], 
+#                     data["data_reliability"], data["data_consistency"], 
+#                     data["valid_certification"], data["neighbor_trust"], veh_id))
+#     conn.commit()
+#     conn.close()
+
+#     return jsonify({"message": f"✅ 车辆 {veh_id} 信任值更新成功"}), 200
+@app.route("/update_trust_factors_vehicle", methods=["POST"])
+def update_trust_vehicle():
+    data = request.json
+    veh_id = data["veh_id"]
 
     conn = connect_db()
     cursor = conn.cursor()
@@ -199,8 +230,9 @@ def update_trust():
                     data["valid_certification"], data["neighbor_trust"], veh_id))
     conn.commit()
     conn.close()
-
+    # return ' ', 200
     return jsonify({"message": f"✅ 车辆 {veh_id} 信任值更新成功"}), 200
+
 
 ### 🚗 4. 查询车辆证书
 @app.route("/get_vehicle_certificate", methods=["GET"])

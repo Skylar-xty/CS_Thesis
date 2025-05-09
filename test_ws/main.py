@@ -7,7 +7,7 @@ from property import Vehicle
 from cryptography.hazmat.primitives import serialization
 from task import TASKS
 import threading
-from monitor_multi import POIMonitorMulti
+from monitor_new import POIMonitor
 sumoBinary = checkBinary('sumo-gui')
 
 EXPERIMENT = 'test1'
@@ -36,6 +36,9 @@ def monitor_thread_fn(monitor):
 def main():
     global register_done,all_VEHICLES,registered_vehicles,all_sensor,vehicles
     startSim()
+    # 获取当前视图（即整个网络）的边界框：((x_min, y_min), (x_max, y_max))
+    boundary = traci.gui.getBoundary("View #0")  # 默认视图 ID 为 "View #0"
+    print(f"📏 地图边界范围: {boundary}")
 
     # RSU init
     for poi_id in traci.poi.getIDList():
@@ -44,7 +47,8 @@ def main():
             x, y = traci.poi.getPosition(poi_id)
             poi_positions.append((x,y))
             print(f"📢 sensor{poi_id} inited at ({x:.2f},{y:.2f})")
-    monitor = POIMonitorMulti(poi_positions)
+        break
+    monitor = POIMonitor(poi_positions)
     # 启动后台线程
     threading.Thread(target=monitor_thread_fn, args=(monitor,), daemon=True).start()
 

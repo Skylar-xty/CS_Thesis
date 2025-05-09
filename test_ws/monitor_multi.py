@@ -19,6 +19,7 @@ class SinglePOIMonitor:
             dx, dy = pos[0] - self.x, pos[1] - self.y
             if dx * dx + dy * dy <= self.radius * self.radius:
                 if veh_id in vehicles_dict:
+                    print(f"👀 Scanning vehicle {veh_id} near POI...")
                     self._analyze(veh_id, vehicles_dict[veh_id])
 
     def _analyze(self, veh_id, veh_obj):
@@ -51,7 +52,7 @@ class SinglePOIMonitor:
 
         veh_obj.malicious = veh_obj.trustScore < veh_obj.trust_threshold
 
-        if anomaly_detected:
+        if anomaly_detected:  # if 1:
             print(f"🚨 异常行为 | {veh_id} | Trust={veh_obj.trustScore:.2f}")
             logging.info(
                 f"[POI监测] 车辆 {veh_id} 异常: Trust={veh_obj.trustScore:.2f}, "
