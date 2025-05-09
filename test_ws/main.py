@@ -5,7 +5,7 @@ import requests
 from property import Vehicle
 
 from cryptography.hazmat.primitives import serialization
-from task import TASKS
+from attack_one import perform_identity_forgery_attack
 import threading
 from monitor_new import POIMonitor
 sumoBinary = checkBinary('sumo-gui')
@@ -27,10 +27,11 @@ register_done = False
 
 vehicles = {} # Dictionary to store all vehicle objects
  
+recent_messages = {} # 存储每辆车最近发送的通信内容
 # 💡 后台监测线程逻辑
 def monitor_thread_fn(monitor):
     while shouldContinueSim():
-        monitor.scan_all(vehicles)
+        monitor.scan_all(vehicles, recent_messages)
         time.sleep(0.1)
 
 def main():
@@ -59,11 +60,16 @@ def main():
             for veh_id in new_veh_ids:
                 if veh_id == "13":
                     traci.vehicle.setColor("13", (255,0,0))
-                if veh_id == "19":
+                if veh_id == "13":   # TODO
                     register_done = True
-                if veh_id not in registered_vehicles:
-                    print(f"🚗 新车辆 {veh_id} 出发，开始注册")
+                
+                # If the car is never initialized:
+                if veh_id not in vehicles:
+                    print(f"🚗 新车辆 {veh_id} 出发")
                     vehicles[veh_id] = Vehicle(veh_id, 'passenger', 33.33, 4.5, 2.0, 100, 50)
+                # If the car is not registered yet:
+                if veh_id not in registered_vehicles:
+                    print(f"车辆 {veh_id}，开始注册")
                     register_vehicle(veh_id)
                     registered_vehicles.append(veh_id)
             # 更新并显示车辆动态属性
@@ -72,48 +78,29 @@ def main():
                 # veh.display_info() 
                 veh.upload_trust_to_ta()
         else:
-            # 异常行为 1
-            # 🚨 控制车辆13在接近 POI 时执行异常行为（超速 + 闯红灯）
-            if "13" in traci.vehicle.getIDList():
-                x, y = traci.vehicle.getPosition("13")
-                if abs(x - 50.09) < 5 and abs(y - 49.60) < 5:
-                    try:
-                        # 禁用所有速度/红灯/安全限制（允许闯红灯）
-                        traci.vehicle.setSpeedMode("13", 0b00000)
+            if "13" in vehicles:
+                perform_identity_forgery_attack(attacker_name="13")
+            # # 异常行为 1
+            # # 🚨 控制车辆13在接近 POI 时执行异常行为（超速 + 闯红灯）
+            # if "13" in traci.vehicle.getIDList():
+            #     x, y = traci.vehicle.getPosition("13")
+            #     if abs(x - 50.09) < 5 and abs(y - 49.60) < 5:
+            #         try:
+            #             # 禁用所有速度/红灯/安全限制（允许闯红灯）
+            #             traci.vehicle.setSpeedMode("13", 0b00000)
 
-                        # 强制设置为超速（40m/s）
-                        traci.vehicle.setSpeed("13", 40)
+            #             # 强制设置为超速（40m/s）
+            #             traci.vehicle.setSpeed("13", 40)
 
-                        # 可视化上色（红色）
-                        traci.vehicle.setColor("13", (255, 0, 0))
+            #             # 可视化上色（红色）
+            #             traci.vehicle.setColor("13", (255, 0, 0))
 
-                        print("📢 异常车辆 13 接近 POI：执行闯红灯 + 超速！")
-                    except Exception as e:
-                        print("❌ 设置车辆13异常行为失败：", e)
+            #             print("📢 异常车辆 13 接近 POI：执行闯红灯 + 超速！")
+            #         except Exception as e:
+            #             print("❌ 设置车辆13异常行为失败：", e)
 
-        # 通信
-        # 查询目标车辆信任评分
-            # veh_id = "0"
-            # veh = vehicles[veh_id]
-            # target_veh_id = "1"
-            # trust_info = get_vehicle_info(target_veh_id)
-
-            # if trust_info and trust_info["trust_score"] >=0:
-            #     print(f"✅ 车辆 {veh_id} 想要与 {target_veh_id} 进行安全通信...")
-
-            #     # 🆕 第一次通信时查询证书
-            #     if not veh.has_verified_certificate(target_veh_id):
-            #         certificate = get_certificate(target_veh_id)
-            #         if certificate:
-            #             if verify_certificate(certificate):  # 证书验证
-            #                 veh.set_verified_certificate(target_veh_id, True)
-            #                 print(f"📜 证书验证成功，允许通信！")
-            #             else:
-            #                 print(f"❌ 证书验证失败，终止通信！")
-            #                 continue
-            #     print("📡 开始数据交换...")
-            # else:
-            #     print(f"❌ 车辆 {target_veh_id} 信任值过低，拒绝通信")    
+        # secure communication:
+            perform_secure_communication("0", "1")    
         traci.simulationStep()
  
     traci.close()
@@ -191,11 +178,13 @@ def get_certificate(veh_id):
         print(f"❌ 车辆 {veh_id} 证书查询失败")
         return None
 
-def verify_certificate(certificate):
+def verify_certificate(certificate, veh_id=None):
     """ 🚗 向 TA 服务器发送证书验证请求 """
     url = "http://localhost:5000/verify_certificate"
     data = {"certificate": certificate}
 
+    if veh_id:
+        data["veh_id"] = veh_id
     response = requests.post(url, json=data)
     
     if response.status_code == 200:
@@ -204,7 +193,139 @@ def verify_certificate(certificate):
     else:
         print("❌ 证书验证失败:", response.json())
         return False
-    
+
+# Communication: bls+ecc
+def perform_secure_communication(sender_id, receiver_id, message=None):
+    """发起一次从 sender 到 receiver 的安全通信，包括信任值判断、证书验证、加解密"""
+    if sender_id not in vehicles or receiver_id not in vehicles:
+        print(f"🚨 通信失败：车辆 {sender_id} 或 {receiver_id} 不存在")
+        return
+
+    sender = vehicles[sender_id]
+    receiver = vehicles[receiver_id]
+    recent_messages[sender_id] = {
+        "location": sender.position,
+        "speed": sender.speed,
+        "timestamp": time.time(),
+        "message": message,
+        "receiver_id": receiver_id
+    }
+    # 1. 信任值判断
+    trust_info = get_vehicle_info(sender_id)
+    if not trust_info or trust_info["trust_score"] < 1:
+        print(f"🚫 通信中止：车辆 {receiver_id} 信任值不足")
+        return
+    else:
+        print(f"✅ 车辆 {sender_id} 想要与 {receiver_id} 进行安全通信...")
+
+    # 2. 证书获取与验证
+    # cert_pem = get_certificate(receiver_id)
+    # if not cert_pem or not verify_certificate(cert_pem):
+    #     print(f"🚫 通信中止：车辆 {receiver_id} 的证书无效")
+    #     return
+    certificate = get_certificate(sender_id)
+    # 🆕 第一次通信时查询证书
+    if not receiver.has_verified_certificate(sender_id):
+        # certificate = get_certificate(sender_id)
+        if certificate:
+            if verify_certificate(certificate, sender_id):  # sender证书验证
+                receiver.set_verified_certificate(sender_id, True)
+                print(f"📜 证书验证成功，允许通信！")
+            else:
+                print(f"🚫 通信中止：车辆 {receiver_id} 的证书无效")
+                return
+    print("📡 开始数据交换...")
+
+    # 3. 从证书中提取 ECC 公钥
+    from cryptography import x509
+    from cryptography.hazmat.backends import default_backend
+    certificate_sender = get_certificate(receiver_id)
+    cert = x509.load_pem_x509_certificate(certificate_sender.encode(), default_backend())
+    receiver_public_key = cert.public_key()
+    # print("【receiver 公钥】")
+    # print(receiver.public_key.public_bytes(
+    #     encoding=serialization.Encoding.PEM,
+    #     format=serialization.PublicFormat.SubjectPublicKeyInfo
+    # ).decode())
+
+    # print("【证书中的公钥】")
+    # print(cert.public_key().public_bytes(
+    #     encoding=serialization.Encoding.PEM,
+    #     format=serialization.PublicFormat.SubjectPublicKeyInfo
+    # ).decode())
+
+    assert receiver.public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    ) == cert.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    # receiver_public_key = receiver.public_key
+    # 4. 准备消息 & BLS 签名
+    if message is None:
+        message = f"来自车辆 {sender_id} 的加密数据请求"
+    signature = sender.bls_sign(message)
+    print(f"车辆 {sender_id} 发出消息：{message}（已签名）")
+
+    # 5. 接收方验证签名
+    if not receiver.bls_verify(message, signature, sender.bls_public_key):
+        print(f"❌ 车辆 {receiver_id} 验证签名失败，通信中止")
+        return
+    print(f"✅ 车辆 {receiver_id} 成功验证来自 {sender_id} 的签名")
+
+    # 6. 加密消息并发送
+    try:
+        ciphertext = sender.encrypt_message(receiver_public_key, message)
+        print(f"✅ 车辆 {sender_id} 已使用证书公钥加密消息")
+
+        # 7. 解密 & 校验
+        decrypted = receiver.decrypt_message(sender.public_key, ciphertext)
+        print(f"🔓 车辆 {receiver_id} 解密内容为：{decrypted}")
+
+        if decrypted == message:
+            print(f"✅ 通信成功！消息完整、加密可靠")
+        else:
+            print(f"❓ 解密消息不一致，完整性可能受损")
+            return
+    except Exception as e:
+        print(f"❌ 通信过程中加密/解密失败: {str(e)}")
+
+def perform_attack2(attacker_id):
+    """🚨 数据篡改攻击：发送伪造数据，但使用原始签名，测试服务端能否检测完整性问题"""
+    if attacker_id not in vehicles:
+        print(f"❌ 攻击失败：车辆 {attacker_id} 不存在")
+        return
+
+    attacker = vehicles[attacker_id]
+    # 1. 构造原始合法数据
+    original_data = {
+        "veh_id": attacker_id,
+        "location": "104.95,37.99",
+        "speed": 30,
+        "event": "normal"
+    }
+    msg = f"{original_data['veh_id']}-{original_data['location']}-{original_data['speed']}-{original_data['event']}"
+    signature = attacker.bls_sign(msg)
+
+    # 2. 构造伪造数据（修改字段，但用原始签名）
+    fake_data = {
+        "veh_id": attacker_id,
+        "location": "105.00,38.00",   # ❌ 伪造位置
+        "speed": 180,                 # ❌ 伪造速度
+        "event": "emergency_stop",   # ❌ 伪造事件
+        "signature": signature.hex()
+    }
+
+    print(f"🚨 车辆 {attacker_id} 正在发送伪造数据: {fake_data}")
+
+    # 3. 发送到服务端攻击入口（你需要在服务端实现 /receive_data）
+    try:
+        res = requests.post("http://localhost:5000/receive_data", json=fake_data)
+        print("📡 服务端响应：", res.json())
+    except Exception as e:
+        print("❌ 攻击请求失败:", str(e))
+
 def shouldContinueSim():
     """Checks that the simulation should continue running.
     Returns:

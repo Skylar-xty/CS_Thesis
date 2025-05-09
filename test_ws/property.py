@@ -16,6 +16,7 @@ import requests
 
 class Vehicle:
     def __init__(self, vehId, vehType, maxSpeed, length, width, initialTrustScore, commRange, certificate=None):
+        # print(f"🛠 正在创建车辆 {vehId} 的 Vehicle 实例...")
         # Static attributes
         self.id = vehId
         self.type = vehType
@@ -56,10 +57,6 @@ class Vehicle:
         self.bls_private_key = AugSchemeMPL.key_gen(seed)
         self.bls_public_key = self.bls_private_key.get_g1()
 
-        # FL Model
-        # self.model = FLModel()
-        # self.optimizer = optim.Adam(self.model.parameters(), lr=0.01)
-        # self.criterion = nn.MSELoss()
 
     def has_verified_certificate(self, target_veh_id):
         """ 检查是否已经验证了目标车辆的证书 """
@@ -178,23 +175,6 @@ class Vehicle:
             "bls": self.bls_public_key
         }    
 
-    # # Cryptographic operations
-    # def sign_message(self, message):
-    #     """Sign a message using the private key."""
-    #     signature = self.private_key.sign(
-    #         message.encode(),
-    #         ec.ECDSA(hashes.SHA256())
-    #     )
-    #     return signature
-
-    # def verify_signature(self, message, signature, public_key):
-    #     """Verify a message's signature using the given public key."""
-    #     try:
-    #         public_key.verify(signature, message.encode(), ec.ECDSA(hashes.SHA256()))
-    #         return True
-    #     except InvalidSignature:
-    #         return False
-
     # P2: Trust management
     # Malicious behavior simulation
     def simulate_malicious_behavior(self):
@@ -215,18 +195,6 @@ class Vehicle:
         """Isolate the vehicle."""
         print(f"Vehicle {self.id} is being isolated from the network.")
 
-    def train_fl_model(self, x_train, y_train):
-        """ 本地训练 PyTorch FL 模型 """
-        x_train, y_train = torch.tensor(x_train, dtype=torch.float32), torch.tensor(y_train, dtype=torch.float32)
-
-        self.optimizer.zero_grad()
-        outputs = self.model(x_train)
-        loss = self.criterion(outputs, y_train)
-        loss.backward()
-        self.optimizer.step()
-
-        return [p.data.numpy() for p in self.model.parameters()]  # return model params
-
     def request_trust_info(self, target_veh_id):
         response = requests.get(f"http://localhost:5000/get_vehicle_info?veh_id={target_veh_id}")
         if response.status_code == 200:
@@ -246,17 +214,3 @@ class Vehicle:
         else:
             print(f"🚨 拒绝通信: 车辆 {target_veh_id} 信任值过低")
             return False
-
-
-class FLModel(nn.Module):
-    def __init__(self):
-        super(FLModel, self).__init__()
-        self.fc1 = nn.Linear(5, 16)
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(16, 1)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.sigmoid(self.fc2(x))
-        return x

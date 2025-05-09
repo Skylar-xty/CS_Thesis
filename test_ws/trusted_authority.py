@@ -5,12 +5,16 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives.asymmetric import rsa, ec, padding
 from cryptography.hazmat.primitives import hashes
-import datetime
+from datetime import datetime, timezone, timedelta
+# import datetime
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509.oid import ObjectIdentifier
 import os
 from blspy import PrivateKey, AugSchemeMPL
 
+# 衰减系数
+
+w_5 = 0.8
 ### 🚗 5. 证书认证机构（CA）功能
 class CertificateAuthority:
     def __init__(self):
@@ -35,8 +39,8 @@ class CertificateAuthority:
             .issuer_name(issuer)
             .public_key(self.private_key.public_key())
             .serial_number(x509.random_serial_number())
-            .not_valid_before(datetime.datetime.utcnow())
-            .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=3650))
+            .not_valid_before(datetime.now(timezone.utc))
+            .not_valid_after(datetime.now(timezone.utc) + timedelta(days=3650))
             .sign(self.private_key, hashes.SHA256())
         )
     def issue_certificate(self, vehicle_id, ecc_public_key, bls_public_key):
@@ -62,8 +66,8 @@ class CertificateAuthority:
                 critical=False
             )\
             .serial_number(x509.random_serial_number())\
-            .not_valid_before(datetime.datetime.utcnow())\
-            .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365))\
+            .not_valid_before(datetime.now(timezone.utc))\
+            .not_valid_after(datetime.now(timezone.utc) + timedelta(days=365))\
             .sign(self.private_key, hashes.SHA256())
 
         return certificate
@@ -82,17 +86,7 @@ class CertificateAuthority:
         except Exception as e:
             print("❌ 证书验证失败:", e)
             return False
-    # def verify_certificate(self, certificate):
-    #     """ 验证证书是否由 CA 颁发 """
-    #     try:
-    #         certificate.public_key().verify(
-    #             certificate.signature,
-    #             certificate.tbs_certificate_bytes,
-    #             ec.ECDSA(hashes.SHA256())
-    #         )
-    #         return True
-    #     except:
-    #         return False
+
 
 ca = CertificateAuthority()
 
@@ -188,15 +182,39 @@ def update_trust():
     data = request.json
     veh_id = data["veh_id"]
     anomaly_value = data["anomaly_driving"]
+    data_reliability = data.get("data_reliability", 1.0)  # 默认不变
 
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute('''UPDATE vehicles SET anomaly_driving=? WHERE veh_id=?''',
-                   (anomaly_value, veh_id))
+
+    # 更新两个因子
+    cursor.execute('''
+        UPDATE vehicles 
+        SET anomaly_driving=?, data_reliability=?
+        WHERE veh_id=?
+    ''', (anomaly_value, data_reliability, veh_id))
+
+    # 重新计算信任分数 trust_score（例如线性加权）
+    cursor.execute('''
+        SELECT data_reliability, data_consistency, valid_certification, neighbor_trust 
+        FROM vehicles WHERE veh_id=?
+    ''', (veh_id,))
+    result = cursor.fetchone()
+    if result:
+        dr, dc, vc, nt = result
+        trust_score = 0.2 * dr + 0.2 * dc + 0.2 * vc + 0.4 * nt
+        trust_score = max(0.0, min(1.0, trust_score))
+        cursor.execute('UPDATE vehicles SET trust_score=? WHERE veh_id=?',
+                       (trust_score, veh_id))
+        msg = f"✅ 车辆 {veh_id} 更新成功，信任值为 {trust_score:.2f}"
+    else:
+        msg = f"⚠️ 无法找到车辆 {veh_id}，未更新 trust_score"
+
     conn.commit()
     conn.close()
 
-    return jsonify({"message": f"✅ 车辆 {veh_id} 的 anomaly_driving 已更新为 {anomaly_value}"}), 200
+    return jsonify({"message": msg}), 200
+
 # def update_trust():
 #     data = request.json
 #     veh_id = data["veh_id"]
@@ -252,19 +270,94 @@ def get_vehicle_certificate():
 
 
 ### 🚗 6. 证书验证 API
+# @app.route("/verify_certificate", methods=["POST"])
+# def verify_certificate():
+#     data = request.json
+#     cert_pem = data["certificate"]
+
+#     try:
+#         cert = x509.load_pem_x509_certificate(cert_pem.encode())
+#         if ca.verify_certificate(cert):
+#             return jsonify({"message": "✅ 证书有效"}), 200
+#         else:
+#             return jsonify({"error": "❌ 证书无效"}), 400
+#     except:
+#         return jsonify({"error": "❌ 证书解析失败"}), 400
+
 @app.route("/verify_certificate", methods=["POST"])
 def verify_certificate():
     data = request.json
     cert_pem = data["certificate"]
-
+    explicit_id = data.get("veh_id", None)
     try:
+        # 1. 加载并解析 PEM 证书
         cert = x509.load_pem_x509_certificate(cert_pem.encode())
+
+        # 2. 时间有效性检查
+        now = datetime.now(timezone.utc)
+
+        cer_veh_id = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+        veh_id = explicit_id or cer_veh_id        
+        if now < cert.not_valid_before_utc or now > cert.not_valid_after_utc:
+            return penalize_cert(veh_id, "证书已过期或尚未生效")
+            # return jsonify({"error": "❌ 证书已过期或尚未生效"}), 400
+
+        # 3. 颁发者合法性检查
+        issuer_cn = cert.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+        if "IoV Root CA" not in issuer_cn:
+            return penalize_cert(veh_id, "非法签发机构")
+            # return jsonify({"error": "❌ 非法签发机构"}), 400
+
+        # 4. 使用 CA 公钥验证签名（核心）
         if ca.verify_certificate(cert):
             return jsonify({"message": "✅ 证书有效"}), 200
         else:
-            return jsonify({"error": "❌ 证书无效"}), 400
-    except:
-        return jsonify({"error": "❌ 证书解析失败"}), 400
+            return penalize_cert(veh_id, "签名验证失败")
+            # return jsonify({"error": "❌ 证书签名验证失败"}), 400
+
+    except Exception as e:
+        return jsonify({"error": f"❌ 证书解析失败: {str(e)}"}), 400
+
+# 处理证书验证失败并关联信任值
+def penalize_cert(veh_id, reason):
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        # 降低 valid_certification 分值
+        cursor.execute("SELECT valid_certification FROM vehicles WHERE veh_id=?", (veh_id,))
+        row = cursor.fetchone()
+        if row:
+            old_vc = row[0]
+            new_vc = max(0.0, old_vc * w_5)   # 每次 * w_5
+
+            cursor.execute("UPDATE vehicles SET valid_certification=? WHERE veh_id=?", (new_vc, veh_id))
+
+            # 重新计算 trust_score
+            cursor.execute('''
+                SELECT data_reliability, data_consistency, valid_certification, neighbor_trust
+                FROM vehicles WHERE veh_id=?
+            ''', (veh_id,))
+            dr, dc, vc, nt = cursor.fetchone()
+            trust_score = round(0.2 * dr + 0.2 * dc + 0.2 * new_vc + 0.4 * nt, 3)
+            trust_score = max(0.0, min(1.0, trust_score))
+            cursor.execute("UPDATE vehicles SET trust_score=? WHERE veh_id=?", (trust_score, veh_id))
+
+            conn.commit()
+            conn.close()
+
+            return jsonify({
+                "error": f"❌ {reason}：信任度已降低",
+                "veh_id": veh_id,
+                "valid_certification": new_vc,
+                "trust_score": trust_score
+            }), 400
+
+        else:
+            return jsonify({"error": f"❌ 未找到车辆 {veh_id}，无法更新评分"}), 400
+
+    except Exception as e:
+        return jsonify({"error": f"❌ 数据库更新失败: {str(e)}"}), 400
 
 if __name__ == "__main__":
 # import os
