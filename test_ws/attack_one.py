@@ -13,9 +13,9 @@ import time
 
 def perform_identity_forgery_attack(attacker_name="99"):
     """
-        🚨 身份伪造攻击：构造伪造证书（由非可信 CA 签发），发送给 TA 验证接口。
-        Parameters:
-            attacker_name (str): 伪造证书中声明的 veh_id
+    🚨 身份伪造攻击：构造伪造证书（由非可信 CA 签发），发送给 TA 验证接口。
+    Parameters:
+        attacker_name (str): 伪造证书中声明的 veh_id
     """
     print(f"⚠️ 正在模拟身份伪造攻击者：Vehicle {attacker_name}")
     # 1. 构造伪造 CA 与攻击者公钥

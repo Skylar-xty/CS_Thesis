@@ -36,8 +36,7 @@ class Vehicle:
 
         # Trust management
         self.anomaly_driving = 0 # n 违规驾驶
-        self.collision = 0       # n 碰撞次数
-
+        self.collision = 0 # 碰撞
         self.data_reliability = 1.0     # p  V2V 数据可靠性
         self.data_consistency = 1.0      # p  V2I 数据一致性
         self.valid_certification = 1   # p 证书是否有效
@@ -45,6 +44,7 @@ class Vehicle:
 
         self.trustScore = initialTrustScore
         self.malicious = False  # Indicates whether this vehicle is malicious
+        self.isrecovered = 0
 
         self.trust_threshold = 0
         # Cryptographic keys
@@ -75,13 +75,12 @@ class Vehicle:
             self.route = traci.vehicle.getRoute(self.id)
             self.accel = traci.vehicle.getAcceleration(self.id)
 
-            collision_list = traci.simulation.getCollidingVehiclesIDList()
-            lane_change = traci.vehicle.getLaneChangeState(self.id, 0)[0]  #TODO, -1/1, return tuple
-            # print(f"DEBUG: lane_change = {lane_change}")  # 🚀 先看看返回值是什么
+            # collision_list = traci.simulation.getCollidingVehiclesIDList()
+            # lane_change = traci.vehicle.getLaneChangeState(self.id, 0)[0]  #TODO, -1/1, return tuple
 
             # 🆕 计算信任因素
-            self.anomaly_driving = int(self.speed > 30 or abs(self.accel) > 3 or lane_change > 0)  # TODO
-            self.collision = int(self.id in collision_list)
+            # self.anomaly_driving = int(self.speed > 30 or abs(self.accel) > 3 or lane_change > 0)  # TODO
+            # self.collision = int(self.id in collision_list)
         else:
             print(f"Vehicle {self.id} is not yet in the network.")
 
@@ -92,7 +91,7 @@ class Vehicle:
             "veh_id": self.id,
             "trust_score": self.trustScore,
             "anomaly_driving": self.anomaly_driving,
-            "collision": self.collision,
+            # "collision": self.collision,
             "data_reliability": self.data_reliability,
             "data_consistency": self.data_consistency,
             "valid_certification": self.valid_certification,

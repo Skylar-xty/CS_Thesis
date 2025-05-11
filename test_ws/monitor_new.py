@@ -1,6 +1,6 @@
 import traci
 import requests
-speed_max = 33
+speed_max = 20
 class POIMonitor:
     def __init__(self, poi_positions, radius=180.0):
         self.poi_positions = poi_positions
@@ -9,8 +9,37 @@ class POIMonitor:
 
     def scan_all(self, vehicles, message_buffer):
         print(f"📡 扫描开始：共{len(vehicles)}辆车")
+        # 碰撞检测
+        # collided_idx = traci.simulation.getCollidingVehiclesIDList()
+        # print("collision: ",collided_idx)
+        # print("💥 当前碰撞数量：", traci.simulation.getCollidingVehiclesNumber())
+
+        # for veh_id in collided_idx:
+            
+        #     print(f"💥 车辆 {veh_id} 发生碰撞，将执行移除 + 注销证书")
+
+        #     # 从仿真中清除
+        #     try:
+        #         traci.vehicle.remove(veh_id)
+        #         vehicles[veh_id].collision = 1
+        #         vehicles[veh_id].malicious = True
+        #         print(f"🧹 车辆 {veh_id} 已移除并标记")
+        #     except Exception as e:
+        #         print(f"❌ 无法移除车辆 {veh_id}：{e}")
+
+        #     # 注销数字证书
+        #     try:
+        #         res = requests.post("http://localhost:5000/revoke_certificate", json={"veh_id": veh_id})
+        #         if res.status_code == 200:
+        #             print(f"📛 车辆 {veh_id} 的证书已成功注销")
+        #         else:
+        #             print(f"⚠️ 注销证书失败（状态码: {res.status_code}）")
+        #     except Exception as e:
+        #         print(f"❌ 请求证书注销接口失败：{e}")
+        # 正常检测逻辑
         for veh_id in traci.vehicle.getIDList():
             x, y = traci.vehicle.getPosition(veh_id)
+            
             for px, py in self.poi_positions:
                 if (x - px)**2 + (y - py)**2 <= self.radius ** 2:
                     self._analyze(veh_id, vehicles.get(veh_id), message_buffer)
@@ -26,7 +55,7 @@ class POIMonitor:
             self.violations[veh_id] = {"overspeed": 0, "redlight": 0, "lying": 0}
 
         # 规则1：超速
-        overspeed = speed>speed_max
+        overspeed = speed > speed_max
         
         # 规则2：闯红灯
         redlight_violation = traci.vehicle.getSpeedMode(veh_id) == 0b00000
@@ -73,8 +102,8 @@ class POIMonitor:
         # veh.trustScore = max(0.0, min(1.0, trust_score))
 
         if anomaly:
-            veh_id.anomaly_driving += anomaly
-            print(f"🚨 车辆 {veh_id} 异常累积:{anomaly}！超速:{self.violations[veh_id]['overspeed']}，闯红灯:{self.violations[veh_id]['redlight']}, 谎报:{self.violations[veh_id].get('lying', 0)}")
+            veh.anomaly_driving += anomaly
+            print(f"🚨 车辆 {veh_id} 异常累积:{veh.anomaly_driving}！新增:{anomaly}，超速:{self.violations[veh_id]['overspeed']}，闯红灯:{self.violations[veh_id]['redlight']}, 谎报:{self.violations[veh_id].get('lying', 0)}")
             try:
                 requests.post("http://localhost:5000/update_trust_factors", json={
                     "veh_id": veh_id,

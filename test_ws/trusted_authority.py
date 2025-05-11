@@ -107,7 +107,6 @@ def init_db():
                         veh_id TEXT PRIMARY KEY,
                         trust_score REAL DEFAULT 1.0,
                         anomaly_driving INTEGER DEFAULT 0,
-                        collision INTEGER DEFAULT 0,
                         data_reliability REAL DEFAULT 1.0,
                         data_consistency REAL DEFAULT 1.0,
                         valid_certification INTEGER DEFAULT 1,
@@ -141,11 +140,11 @@ def register_vehicle():
 
     conn = connect_db()
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO vehicles (veh_id, trust_score, anomaly_driving, collision, 
+    cursor.execute('''INSERT INTO vehicles (veh_id, trust_score, anomaly_driving,
                       data_reliability, data_consistency, valid_certification, neighbor_trust, 
                       ecc_public_key, bls_public_key, certificate)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                   (veh_id, 1.0, 0, 0, 1.0, 1.0, 1, 1.0, ecc_public_key_pem, bls_public_key_hex, certificate.public_bytes(encoding=serialization.Encoding.PEM)))
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                   (veh_id, 1.0, 0, 1.0, 1.0, 1, 1.0, ecc_public_key_pem, bls_public_key_hex, certificate.public_bytes(encoding=serialization.Encoding.PEM)))
     conn.commit()
     conn.close()
     
@@ -167,11 +166,10 @@ def get_vehicle_info():
             "veh_id": result[0], 
             "trust_score": result[1],
             "anomaly_driving": result[2],
-            "collision": result[3],
-            "data_reliability": result[4],
-            "data_consistency": result[5],
-            "valid_certification": result[6],
-            "neighbor_trust": result[7]
+            "data_reliability": result[3],
+            "data_consistency": result[4],
+            "valid_certification": result[5],
+            "neighbor_trust": result[6]
         })
     else:
         return jsonify({"error": "车辆未注册"}), 404
@@ -240,10 +238,10 @@ def update_trust_vehicle():
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute('''UPDATE vehicles SET 
-                      trust_score=?, anomaly_driving=?, collision=?, 
+                      trust_score=?, anomaly_driving=?, 
                       data_reliability=?, data_consistency=?, valid_certification=?, neighbor_trust=? 
                       WHERE veh_id=?''',
-                   (data["trust_score"], data["anomaly_driving"], data["collision"], 
+                   (data["trust_score"], data["anomaly_driving"],
                     data["data_reliability"], data["data_consistency"], 
                     data["valid_certification"], data["neighbor_trust"], veh_id))
     conn.commit()
@@ -358,6 +356,41 @@ def penalize_cert(veh_id, reason):
 
     except Exception as e:
         return jsonify({"error": f"❌ 数据库更新失败: {str(e)}"}), 400
+
+@app.route("/revoke_certificate", methods=["POST"])
+def revoke_certificate():
+    data = request.json
+    veh_id = data.get("veh_id")
+    if not veh_id:
+        return jsonify({"error": "缺少 veh_id 参数"}), 400
+
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        # 将 valid_certification 标记为 0（或更低值），也可直接删除记录
+        cursor.execute("UPDATE vehicles SET valid_certification=0 WHERE veh_id=?", (veh_id,))
+        
+        # 将 trust_score 也一起更新为最低（你也可以保留它）
+        cursor.execute("UPDATE vehicles SET trust_score=0.0 WHERE veh_id=?", (veh_id,))
+
+        conn.commit()
+        conn.close()
+
+        print(f"📛 已注销车辆 {veh_id} 的证书并标记为失效")
+        return jsonify({"message": f"✅ 车辆 {veh_id} 证书已注销"}), 200
+
+    except Exception as e:
+        return jsonify({"error": f"❌ 注销失败: {str(e)}"}), 500
+
+
+@app.route("/test_attack", methods=["POST"])
+def test_attack():
+    """🚨 简单测试攻击数据是否能被服务端接收到"""
+    data = request.json
+    print("🛑 收到攻击测试数据:", data)
+    return jsonify({"message": "✅ 已成功收到攻击测试数据", "received": data}), 200
+
 
 if __name__ == "__main__":
 # import os

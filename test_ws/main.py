@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives import serialization
 from attack_one import perform_identity_forgery_attack
 import threading
 from monitor_new import POIMonitor
+
 sumoBinary = checkBinary('sumo-gui')
 
 EXPERIMENT = 'test1'
@@ -35,6 +36,7 @@ def monitor_thread_fn(monitor):
         time.sleep(0.1)
 
 def main():
+    step = 0
     global register_done,all_VEHICLES,registered_vehicles,all_sensor,vehicles
     startSim()
     # 获取当前视图（即整个网络）的边界框：((x_min, y_min), (x_max, y_max))
@@ -78,29 +80,19 @@ def main():
                 # veh.display_info() 
                 veh.upload_trust_to_ta()
         else:
-            if "13" in vehicles:
-                perform_identity_forgery_attack(attacker_name="13")
-            # # 异常行为 1
-            # # 🚨 控制车辆13在接近 POI 时执行异常行为（超速 + 闯红灯）
-            # if "13" in traci.vehicle.getIDList():
-            #     x, y = traci.vehicle.getPosition("13")
-            #     if abs(x - 50.09) < 5 and abs(y - 49.60) < 5:
-            #         try:
-            #             # 禁用所有速度/红灯/安全限制（允许闯红灯）
-            #             traci.vehicle.setSpeedMode("13", 0b00000)
-
-            #             # 强制设置为超速（40m/s）
-            #             traci.vehicle.setSpeed("13", 40)
-
-            #             # 可视化上色（红色）
-            #             traci.vehicle.setColor("13", (255, 0, 0))
-
-            #             print("📢 异常车辆 13 接近 POI：执行闯红灯 + 超速！")
-            #         except Exception as e:
-            #             print("❌ 设置车辆13异常行为失败：", e)
-
+            # if "9" in vehicles:
+                # perform_attack1("9")
+            # if step % 10 == 0:
+                # recover_vehicle("9")
+                # recover_vehicle("9")
+                # perform_attack2("13")
+                # perform_identity_forgery_attack(attacker_name="13")
+            # if vehicles["1"].isrecovered == 0:
+                # recover_vehicle("1")
+            
         # secure communication:
-            perform_secure_communication("0", "1")    
+            # perform_secure_communication("0", "1")    
+            step += 1
         traci.simulationStep()
  
     traci.close()
@@ -114,12 +106,13 @@ def startSim():
             '--net-file', f'./config/{EXPERIMENT}/net.net.xml',
             # '--net-file', './config/network_new.net.xml',
             # '--route-files', './config/trips.trips.xml',
-            '--route-files', f'./config/{EXPERIMENT}/modified_routes2.rou.xml',
+            '--route-files', f'./config/{EXPERIMENT}/modified_routes2_newlong.rou.xml',
             '--delay', '200',
             '--gui-settings-file', './config/viewSettings.xml',
             '--additional-files', f'./config/{EXPERIMENT}/poi.add.xml',
             # '--additional-files', './config/additional.xml',
             '--log', "sumo_log.txt",
+            # '--collision.action', 'warn',         # 显示碰撞但不中断仿真
             '--start'
  
         ])
@@ -291,6 +284,46 @@ def perform_secure_communication(sender_id, receiver_id, message=None):
     except Exception as e:
         print(f"❌ 通信过程中加密/解密失败: {str(e)}")
 
+def perform_attack1(attacker_id):
+    # 异常行为 1
+    # 🚨 控制车辆13在接近 POI 时执行异常行为（超速 + 闯红灯）
+    if attacker_id in traci.vehicle.getIDList():
+        x, y = traci.vehicle.getPosition(attacker_id)
+        if abs(x - 50.09) < 5 and abs(y - 49.60) < 5:
+            try:
+                # 禁用所有速度/红灯/安全限制（允许闯红灯）
+                traci.vehicle.setSpeedMode(attacker_id, 0b00000)
+
+                # 强制设置为超速（40m/s）
+                traci.vehicle.setSpeed(attacker_id, 20)
+
+                # 可视化上色（红色）
+                traci.vehicle.setColor(attacker_id, (255, 0, 0))
+
+                print(f"📢 异常车辆 {attacker_id} 接近 POI：执行闯红灯 + 超速！")
+                vehicles[attacker_id].isrecoverd = 0
+            except Exception as e:
+                print("❌ 设置车辆13异常行为失败：", e)
+
+def recover_vehicle(attacker_id):
+    """
+    恢复车辆行为为正常状态（恢复默认速度限制、颜色等）
+    """
+    if attacker_id in traci.vehicle.getIDList():
+        x, y = traci.vehicle.getPosition(attacker_id)
+        if abs(x - 50.09) > 40 and abs(y - 49.60) > 40:
+            try:
+                # 恢复默认的速度模式（如启用安全性检查）
+                traci.vehicle.setSpeedMode(attacker_id, 0b11111)
+                
+                # 恢复为 SUMO 控制速度（-1 表示由SUMO控制）
+                traci.vehicle.setSpeed(attacker_id, -1)
+
+                print(f"✅ 车辆 {attacker_id} 已恢复正常状态")
+                vehicles[attacker_id].isrecoverd = 1
+            except Exception as e:
+                print("❌ 恢复车辆行为失败：", e)
+
 def perform_attack2(attacker_id):
     """🚨 数据篡改攻击：发送伪造数据，但使用原始签名，测试服务端能否检测完整性问题"""
     if attacker_id not in vehicles:
@@ -314,14 +347,14 @@ def perform_attack2(attacker_id):
         "location": "105.00,38.00",   # ❌ 伪造位置
         "speed": 180,                 # ❌ 伪造速度
         "event": "emergency_stop",   # ❌ 伪造事件
-        "signature": signature.hex()
+        # "signature": signature.hex()
     }
 
     print(f"🚨 车辆 {attacker_id} 正在发送伪造数据: {fake_data}")
 
     # 3. 发送到服务端攻击入口（你需要在服务端实现 /receive_data）
     try:
-        res = requests.post("http://localhost:5000/receive_data", json=fake_data)
+        res = requests.post("http://localhost:5000/test_attack", json=fake_data)
         print("📡 服务端响应：", res.json())
     except Exception as e:
         print("❌ 攻击请求失败:", str(e))

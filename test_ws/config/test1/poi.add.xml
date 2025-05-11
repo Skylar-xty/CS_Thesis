@@ -5,6 +5,6 @@
 
 <additional xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/additional_file.xsd">
     <!-- Shapes -->
-    <poi id="poi_0" type="sensor_unit" color="blue" layer="202.00" x="0.98" y="48.96"/>
-    <poi id="poi_1" type="sensor_unit" color="blue" layer="202.00" x="50.09" y="49.60"/>
+    <!-- <poi id="poi_0" type="sensor_unit" color="blue" layer="202.00" x="0.98" y="48.96"/> -->
+    <poi id="poi_0" type="sensor_unit" color="blue" layer="202.00" x="50.09" y="49.60"/>
 </additional>
