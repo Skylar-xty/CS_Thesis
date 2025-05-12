@@ -41,7 +41,6 @@ class Vehicle:
 
         # Trust management
         self.anomaly_driving = 0 # n 违规驾驶
-        self.collision = 0 # 碰撞
         self.data_reliability = 1.0     # p  V2V 数据可靠性
         self.data_consistency = 1.0      # p  V2I 数据一致性
         self.valid_certification = 1   # p 证书是否有效
@@ -51,7 +50,7 @@ class Vehicle:
         self.malicious = False  # Indicates whether this vehicle is malicious
         self.isrecovered = 0
 
-        self.trust_threshold = 0
+        self.trust_threshold = 1.0
         # Cryptographic keys
         self.private_key = ec.generate_private_key(ec.SECP256R1())
         self.public_key = self.private_key.public_key()
@@ -74,7 +73,7 @@ class Vehicle:
     def update_dynamic_attributes(self, traci):
         """Update dynamic attributes if the vehicle exists in the network."""
         if self.is_in_network(traci):
-            print(f"{self.id} is updating...")
+            # print(f"{self.id} is updating...")
             self.position = traci.vehicle.getPosition(self.id)
             self.speed = traci.vehicle.getSpeed(self.id)
             self.route = traci.vehicle.getRoute(self.id)
@@ -96,7 +95,6 @@ class Vehicle:
             "veh_id": self.id,
             "trust_score": self.trustScore,
             "anomaly_driving": self.anomaly_driving,
-            # "collision": self.collision,
             "data_reliability": self.data_reliability,
             "data_consistency": self.data_consistency,
             "valid_certification": self.valid_certification,
@@ -219,22 +217,22 @@ class Vehicle:
         """Isolate the vehicle."""
         print(f"Vehicle {self.id} is being isolated from the network.")
 
-    def request_trust_info(self, target_veh_id):
-        response = requests.get(f"http://localhost:5000/get_vehicle_info?veh_id={target_veh_id}")
-        if response.status_code == 200:
-            data = response.json()
-            print(f"🚗 车辆 {target_veh_id} 信任值: {data['trust_score']}, 位置: {data['location']}")
-            return data
-        else:
-            print("🚨 目标车辆未注册或信息不可用")
-            return None            
+    # def request_trust_info(self, target_veh_id):
+    #     response = requests.get(f"http://localhost:5000/get_vehicle_info?veh_id={target_veh_id}")
+    #     if response.status_code == 200:
+    #         data = response.json()
+    #         print(f"🚗 车辆 {target_veh_id} 信任值: {data['trust_score']}, 位置: {data['location']}")
+    #         return data
+    #     else:
+    #         print("🚨 目标车辆未注册或信息不可用")
+    #         return None            
 
-    def decide_communication(self, target_veh_id):
-        """获取目标车辆的信任值，并决定是否通信"""
-        trust_info = self.request_trust_info(target_veh_id)
-        if trust_info and trust_info["trust_score"] >= self.trust_threshold:
-            print(f"✅ 允许通信: 车辆 {target_veh_id} 信任值满足要求")
-            return True
-        else:
-            print(f"🚨 拒绝通信: 车辆 {target_veh_id} 信任值过低")
-            return False
+    # def decide_communication(self, target_veh_id):
+    #     """获取目标车辆的信任值，并决定是否通信"""
+    #     trust_info = self.request_trust_info(target_veh_id)
+    #     if trust_info and trust_info["trust_score"] >= self.trust_threshold:
+    #         print(f"✅ 允许通信: 车辆 {target_veh_id} 信任值满足要求")
+    #         return True
+    #     else:
+    #         print(f"🚨 拒绝通信: 车辆 {target_veh_id} 信任值过低")
+    #         return False

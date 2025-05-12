@@ -50,7 +50,7 @@ class CertificateAuthority:
             x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Beijing"),
             x509.NameAttribute(NameOID.LOCALITY_NAME, "Beijing"),
             x509.NameAttribute(NameOID.ORGANIZATION_NAME, "IoV Security"),
-            x509.NameAttribute(NameOID.COMMON_NAME, f"{vehicle_id}"),
+            x509.NameAttribute(NameOID.COMMON_NAME, f"Vehicle-{vehicle_id}"),
         ])
         # 定义自定义 OID（建议用 1.3.6.1.4.1.xxxx.yyyy 格式）
         BLS_PUBLIC_KEY_OID = ObjectIdentifier("1.3.6.1.4.1.99999.1")
@@ -213,6 +213,23 @@ def update_trust():
 
     return jsonify({"message": msg}), 200
 
+# def update_trust():
+#     data = request.json
+#     veh_id = data["veh_id"]
+
+#     conn = connect_db()
+#     cursor = conn.cursor()
+#     cursor.execute('''UPDATE vehicles SET 
+#                       trust_score=?, anomaly_driving=?, collision=?, 
+#                       data_reliability=?, data_consistency=?, valid_certification=?, neighbor_trust=? 
+#                       WHERE veh_id=?''',
+#                    (data["trust_score"], data["anomaly_driving"], data["collision"], 
+#                     data["data_reliability"], data["data_consistency"], 
+#                     data["valid_certification"], data["neighbor_trust"], veh_id))
+#     conn.commit()
+#     conn.close()
+
+#     return jsonify({"message": f"✅ 车辆 {veh_id} 信任值更新成功"}), 200
 @app.route("/update_trust_factors_vehicle", methods=["POST"])
 def update_trust_vehicle():
     data = request.json
@@ -229,6 +246,7 @@ def update_trust_vehicle():
                     data["valid_certification"], data["neighbor_trust"], veh_id))
     conn.commit()
     conn.close()
+    # return ' ', 200
     return jsonify({"message": f"✅ 车辆 {veh_id} 信任值更新成功"}), 200
 
 
@@ -250,47 +268,29 @@ def get_vehicle_certificate():
 
 
 ### 🚗 6. 证书验证 API
+# @app.route("/verify_certificate", methods=["POST"])
+# def verify_certificate():
+#     data = request.json
+#     cert_pem = data["certificate"]
+
+#     try:
+#         cert = x509.load_pem_x509_certificate(cert_pem.encode())
+#         if ca.verify_certificate(cert):
+#             return jsonify({"message": "✅ 证书有效"}), 200
+#         else:
+#             return jsonify({"error": "❌ 证书无效"}), 400
+#     except:
+#         return jsonify({"error": "❌ 证书解析失败"}), 400
+
 @app.route("/verify_certificate", methods=["POST"])
 def verify_certificate():
     data = request.json
     cert_pem = data["certificate"]
     explicit_id = data.get("veh_id", None)
-
-    conn = None
     try:
         # 1. 加载并解析 PEM 证书
         cert = x509.load_pem_x509_certificate(cert_pem.encode())
-        cert_subject_cn = cert.subject.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
-        
-        # # 确定要检查的数据库车辆ID
-        db_veh_id_to_check = cert_subject_cn
-        if explicit_id and explicit_id != cert_subject_cn:
-            # 如果调用者提供的ID与证书CN不符，这是个问题，通常应该拒绝
-            print(f"⚠️ 证书身份声明不匹配：验证者期望ID '{explicit_id}', 证书声明ID '{cert_subject_cn}'")
-            return jsonify({"error": f"证书身份声明与期望ID不匹配 (证书CN: {cert_subject_cn}, 期望ID: {explicit_id})"}), 400
-            # 或者调用 penalize_cert(explicit_id_from_verifier, "证书身份声明与期望ID不匹配")
-        
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT valid_certification, ecc_public_key, bls_public_key FROM vehicles WHERE veh_id=?", (db_veh_id_to_check,))
-        vehicle_record = cursor.fetchone()
 
-        if not vehicle_record:
-            conn.close()
-            return jsonify({"error": f"❌ 证书对应的车辆ID '{db_veh_id_to_check}' 未在本系统中注册。"}), 400
-
-        is_cert_still_valid_in_db, registered_ecc_pk_pem, registered_bls_pk_hex = vehicle_record
-
-        # === 关键防御点 1：检查数据库中证书的有效性/吊销状态 ===
-        if is_cert_still_valid_in_db <= 0: # 假设0或负数表示已吊销/无效
-            conn.close()
-            print(f"ℹ️ TA检测到车辆 {db_veh_id_to_check} 的证书已被标记为无效/已吊销 (状态: {is_cert_still_valid_in_db})。")
-            return jsonify({
-                "error": f"❌ 证书已被吊销或标记为无效 (车辆ID: {db_veh_id_to_check})。",
-                "veh_id": db_veh_id_to_check,
-                "valid_certification_status": is_cert_still_valid_in_db
-            }), 400 # 返回400表示客户端错误（使用了无效证书）
-        
         # 2. 时间有效性检查
         now = datetime.now(timezone.utc)
 
@@ -298,6 +298,7 @@ def verify_certificate():
         veh_id = explicit_id or cer_veh_id        
         if now < cert.not_valid_before_utc or now > cert.not_valid_after_utc:
             return penalize_cert(veh_id, "证书已过期或尚未生效")
+            # return jsonify({"error": "❌ 证书已过期或尚未生效"}), 400
 
         # 3. 颁发者合法性检查
         issuer_cn = cert.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
@@ -312,18 +313,9 @@ def verify_certificate():
             return penalize_cert(veh_id, "签名验证失败")
             # return jsonify({"error": "❌ 证书签名验证失败"}), 400
 
-    except ValueError as e_val: # 例如，PEM格式错误
-        print(f"❌ TA /verify_certificate: 证书数据格式错误: {e_val} (期望ID: {explicit_id_from_verifier or '未知'})")
-        return jsonify({"error": f"❌ 证书数据格式无效: {str(e_val)}"}), 400
     except Exception as e:
         return jsonify({"error": f"❌ 证书解析失败: {str(e)}"}), 400
-    finally:
-        if conn: # 确保conn不是None才尝试关闭
-            try:
-                conn.close()
-            except Exception as e_db_close:
-                print(f"关闭数据库连接时发生错误: {e_db_close}")
-                
+
 # 处理证书验证失败并关联信任值
 def penalize_cert(veh_id, reason):
     try:
