@@ -80,10 +80,10 @@ def main():
                 # veh.display_info() 
                 veh.upload_trust_to_ta()
         else:
-            # if "9" in vehicles:
-                # perform_attack1("9")
-            # if step % 10 == 0:
-                # recover_vehicle("9")
+            if "0" in vehicles:
+                perform_attack1("0")
+            if step % 10 == 0:
+                recover_vehicle("0")
                 # recover_vehicle("9")
                 # perform_attack2("13")
                 # perform_identity_forgery_attack(attacker_name="13")
@@ -212,10 +212,6 @@ def perform_secure_communication(sender_id, receiver_id, message=None):
         print(f"✅ 车辆 {sender_id} 想要与 {receiver_id} 进行安全通信...")
 
     # 2. 证书获取与验证
-    # cert_pem = get_certificate(receiver_id)
-    # if not cert_pem or not verify_certificate(cert_pem):
-    #     print(f"🚫 通信中止：车辆 {receiver_id} 的证书无效")
-    #     return
     certificate = get_certificate(sender_id)
     # 🆕 第一次通信时查询证书
     if not receiver.has_verified_certificate(sender_id):

@@ -7,6 +7,8 @@ from cryptography.hazmat.primitives.asymmetric import utils
 from cryptography.exceptions import InvalidSignature
 from blspy import PrivateKey, AugSchemeMPL
 import os
+import time
+import uuid
 
 import torch
 import torch.nn as nn
@@ -25,6 +27,9 @@ class Vehicle:
         self.width = width
         self.initialTrustScore = initialTrustScore
         self.commRange = commRange
+
+        self.recently_processed_nonces = {}  # 存储 {sender_id: {nonce_value: timestamp_received}}
+        self.message_nonce_ttl = 10  # 秒：保持Nonce以防止重放的时间（根据需要调整）
 
         self.certificate = certificate  # Digital certificate for authenticatio
         self.verified_certificates = {}  # 记录已验证的证书
@@ -150,16 +155,18 @@ class Vehicle:
         return aesgcm.decrypt(nonce, encrypted_message, None).decode()
 
     # BLS Signature
-    def bls_sign(self, message):
+    def bls_sign(self, message, nonce):
         """使用 BLS 签名消息"""
-        message_bytes = message.encode()
+        message_to_sign = f"{message}|{nonce}"
+        message_bytes = message_to_sign.encode()
         signature = AugSchemeMPL.sign(self.bls_private_key, message_bytes)
         return signature
 
-    def bls_verify(self, message, signature, public_key):
+    def bls_verify(self, message, nonce, signature, public_key):
         """验证 BLS 签名"""
         try:
-            message_bytes = message.encode()
+            message_to_verify = f"{message}|{nonce}"
+            message_bytes = message_to_verify.encode()
             # signature_obj = AugSchemeMPL.from_bytes(signature)
             signature_obj = signature
             ok: bool = AugSchemeMPL.verify(public_key, message_bytes, signature_obj)
@@ -167,6 +174,24 @@ class Vehicle:
         except:
             return False  
 
+    def is_nonce_replayed(self, sender_id, nonce):
+        current_time = time.time()
+        # 清理特定发送者的旧Nonce
+        if sender_id in self.recently_processed_nonces:
+            self.recently_processed_nonces[sender_id] = {
+                n: ts for n, ts in self.recently_processed_nonces[sender_id].items()
+                if current_time - ts < self.message_nonce_ttl
+            }
+        else:
+            self.recently_processed_nonces[sender_id] = {}
+
+        if nonce in self.recently_processed_nonces.get(sender_id, {}):
+            return True  # 重放
+        else:
+            # 存储新的Nonce及其到达时间
+            self.recently_processed_nonces.setdefault(sender_id, {})[nonce] = current_time
+            return False
+        
     def get_public_keys(self):
         """返回 ECC 和 BLS 公钥"""
         return {

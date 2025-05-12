@@ -46,7 +46,8 @@ def perform_identity_forgery_attack(attacker_name="99"):
     res = requests.post(url, json={"certificate": fake_cert_pem})
     print("📤 伪造证书响应结果:", res.json())
 
-
+def perform_fake_bls_signature_attack():
+    pass
 def perform_replay_attack(captured_message=None, delay=500):
     """
     🚨 重放攻击：延迟重新发送一条旧的合法消息

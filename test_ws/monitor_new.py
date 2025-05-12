@@ -9,35 +9,10 @@ class POIMonitor:
 
     def scan_all(self, vehicles, message_buffer):
         print(f"📡 扫描开始：共{len(vehicles)}辆车")
-        # 碰撞检测
-        # collided_idx = traci.simulation.getCollidingVehiclesIDList()
-        # print("collision: ",collided_idx)
-        # print("💥 当前碰撞数量：", traci.simulation.getCollidingVehiclesNumber())
-
-        # for veh_id in collided_idx:
-            
-        #     print(f"💥 车辆 {veh_id} 发生碰撞，将执行移除 + 注销证书")
-
-        #     # 从仿真中清除
-        #     try:
-        #         traci.vehicle.remove(veh_id)
-        #         vehicles[veh_id].collision = 1
-        #         vehicles[veh_id].malicious = True
-        #         print(f"🧹 车辆 {veh_id} 已移除并标记")
-        #     except Exception as e:
-        #         print(f"❌ 无法移除车辆 {veh_id}：{e}")
-
-        #     # 注销数字证书
-        #     try:
-        #         res = requests.post("http://localhost:5000/revoke_certificate", json={"veh_id": veh_id})
-        #         if res.status_code == 200:
-        #             print(f"📛 车辆 {veh_id} 的证书已成功注销")
-        #         else:
-        #             print(f"⚠️ 注销证书失败（状态码: {res.status_code}）")
-        #     except Exception as e:
-        #         print(f"❌ 请求证书注销接口失败：{e}")
         # 正常检测逻辑
-        for veh_id in traci.vehicle.getIDList():
+        active_vehicles = list(traci.vehicle.getIDList())  # 快照，避免迭代时被修改
+        for veh_id in active_vehicles:
+        # for veh_id in traci.vehicle.getIDList():
             x, y = traci.vehicle.getPosition(veh_id)
             
             for px, py in self.poi_positions:

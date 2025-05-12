@@ -1,0 +1,48 @@
+***Starting server on port 55409 ***
+Loading net-file from './config/test1/net.net.xml' ... done (3ms).
+Loading additional-files from './config/test1/poi.add.xml' ... done (8ms).
+Loading route-files incrementally from './config/test1/modified_routes2_newlong.rou.xml'
+Loading done.
+Simulation started with time: 0.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '5', lane='-E2_0', gap=-7.71, time=54.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge 'E2', time=54.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '19', lane='E2_0', gap=-2.85, time=55.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge 'E3', time=55.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '2', lane='-E2_0', gap=-15.35, time=60.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge 'E9', time=60.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '2', lane='-E2_0', gap=-2.94, time=83.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge 'E2', time=83.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '11', lane='E3_0', gap=-6.41, time=86.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge '-E8', time=86.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '18', lane='E8_0', gap=-0.07, time=94.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge '-E3', time=94.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '4', lane='-E2_0', gap=-15.69, time=98.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge 'E2', time=98.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '11', lane='E3_0', gap=-13.06, time=102.00, stage=move.
+Warning: Teleporting vehicle '0'; collision with vehicle '16', lane='E3_0', gap=-5.56, time=102.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge '-E3', time=102.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '7', lane='-E3_0', gap=-12.99, time=103.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge '-E2', time=104.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '14', lane='-E2_0', gap=-12.90, time=105.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge 'E9', time=105.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '2', lane='E4_0', gap=-6.92, time=108.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge 'E5', time=109.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '3', lane='E3_0', gap=-11.37, time=143.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge '-E3', time=162.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '12', lane='-E3_0', gap=-7.50, time=163.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge '-E2', time=163.00.
+Warning: Teleporting vehicle '0'; collision with vehicle '16', lane='-E2_0', gap=-13.31, time=164.00, stage=move.
+Warning: Vehicle '0' ends teleporting on edge 'E2', time=164.00.
+Warning: Vehicle '0' performs emergency braking on lane '-E1_0' with decel=9.00, wished=4.50, severity=1.00, time=172.00.
+Simulation ended at time: 242.00.
+Performance:
+ Duration: 48.56s
+ TraCI-Duration: 0.45s
+ Real time factor: 4.98312
+ UPS: 99.579936
+Vehicles:
+ Inserted: 20
+ Running: 20
+ Waiting: 0
+ Teleports: 15 (Collisions: 15)
+ Emergency Braking: 1
