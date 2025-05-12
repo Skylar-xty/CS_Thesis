@@ -201,7 +201,7 @@ def perform_secure_communication(sender_id, receiver_id, message_payload=None, c
     receiver = vehicles[receiver_id]
 
     actual_message_content = message_payload if message_payload is not None else f"来自车辆 {sender_id} 的数据请求@{int(time.time())}"
-
+    # actual_message_content = f"场景六：正常通信与信任管理测试，来自车辆{sender_id}"
     # --- 谎报攻击逻辑 ---
     if current_scenario_for_attack == TestScenario.LYING_ATTACK and sender_id == lying_attacker_id_for_attack:
         if lying_attack_transmission_count < MAX_LYING_TRANSMISSIONS:
@@ -238,7 +238,9 @@ def perform_secure_communication(sender_id, receiver_id, message_payload=None, c
             actual_message_content = f"来自车辆 {sender_id} 的常规数据请求 (已完成谎报)@{int(time.time())}"
 
     else:
-        actual_message_content = message_payload if message_payload is not None else f"来自车辆 {sender_id} 的数据请求@{int(time.time())}"
+        # actual_message_content = message_payload if message_payload is not None else f"来自车辆 {sender_id} 的数据请求@{int(time.time())}"
+        actual_message_content = f"场景六：正常通信与信任管理测试，来自车辆{sender_id}"
+
     # --- 谎报攻击逻辑结束 ---
 
     # 更新 recent_messages 供监控器使用
@@ -290,7 +292,7 @@ def perform_secure_communication(sender_id, receiver_id, message_payload=None, c
     # 4. 准备Nonce, 消息签名 (发送方操作)
     message_nonce = str(uuid.uuid4())
     signature = sender.bls_sign(actual_message_content, message_nonce) # message_payload 是原始消息
-    # print(f"车辆 {sender_id} 发出消息: '{actual_message_content[:30]}...' (Nonce: {message_nonce.split('-')[0]}...), 已签名")
+    print(f"车辆 {sender_id} 发出消息: '{actual_message_content[:30]}...' (Nonce: {message_nonce.split('-')[0]}...), 已签名")
 
     # === 接收方操作 ===
     # 5. 检查Nonce是否重放
@@ -417,6 +419,10 @@ def run_simulation_with_scenario(current_scenario):
     REGISTRATION_PHASE_DURATION_STEPS = 30
     NORMAL_COMM_PHASE_DURATION_STEPS = 40 # 为捕获数据留出更多时间
     ATTACK_PHASE_START_OFFSET = 5        # 正常通信结束后多少步开始攻击
+    # 为TestScenario.NONE场景定义通信车辆对和频率
+    NONE_SCENARIO_COMM_INTERVAL = 10 # 每10步通信一次
+    # 可以定义多对车辆进行测试
+    none_scenario_comm_pairs = [("0", "1"), ("2", "3")] # 示例车辆对
 
     print(f"[INFO] 仿真开始。注册阶段将持续约 {REGISTRATION_PHASE_DURATION_STEPS} 步。")
 
@@ -444,91 +450,108 @@ def run_simulation_with_scenario(current_scenario):
 
         # --- 阶段 2: 正常通信 / 攻击执行 ---
         else: # register_done is True
-            # A. 正常通信阶段 (为重放攻击捕获数据)
-            # 此阶段在注册完成后，攻击开始前运行
-            normal_comm_start_step = REGISTRATION_PHASE_DURATION_STEPS + 1
-            normal_comm_end_step = normal_comm_start_step + NORMAL_COMM_PHASE_DURATION_STEPS
+            if current_scenario == TestScenario.NONE:
+                # 场景NONE: 专注于执行和测试 perform_secure_communication
+                if step % NONE_SCENARIO_COMM_INTERVAL == 0:
+                    for sender_id, receiver_id in none_scenario_comm_pairs:
+                        if sender_id in registered_vehicles and receiver_id in registered_vehicles:
+                            # 确保车辆仍在仿真中
+                            if sender_id in current_active_vehicles and receiver_id in current_active_vehicles:
+                                print(f"\n[SCENARIO_NONE - 通信测试] Step {step}: 触发 '{sender_id}' 与 '{receiver_id}' 安全通信")
+                                perform_secure_communication(
+                                    sender_id, receiver_id,
+                                    f"SCENARIO_NONE Test Message @ Step {step} from {sender_id} to {receiver_id}",
+                                    capture_this_comm=False # 在NONE场景下通常不需要捕获
+                                )
+                        # else:
+                            # print(f"[SCENARIO_NONE - 通信测试] Step {step}: 车辆对 ({sender_id}, {receiver_id}) 中有车辆未注册或不存在，跳过通信。")
             
-            if normal_comm_start_step <= step < normal_comm_end_step:
-                if step % 7 == 0: # 通信频率
-                    if replay_attack_sender in registered_vehicles and replay_attack_receiver in registered_vehicles:
-                        print(f"\n[正常通信阶段] Step {step}: 触发 {replay_attack_sender} 和 {replay_attack_receiver} 之间通信 (用于捕获)")
-                        perform_secure_communication(
-                            replay_attack_sender, replay_attack_receiver,
-                            f"捕获消息 {step} from {replay_attack_sender} to {replay_attack_receiver}",
-                            capture_this_comm=True # 显式要求捕获
-                        )
-            
-            # B. 攻击执行阶段
-            attack_trigger_step = normal_comm_end_step + ATTACK_PHASE_START_OFFSET
-
-            # 根据命令行选择的场景执行特定攻击
-            if current_scenario == TestScenario.IDENTITY_FORGERY:
-                if step == attack_trigger_step:
-                    print(f"\n--- 测试场景: {TestScenario.IDENTITY_FORGERY} (Step: {step}) ---")
-                    if identity_forgery_attacker in registered_vehicles:
-                        perform_identity_forgery_attack(attacker_name=identity_forgery_attacker)
-                    else:
-                        print(f"  无法执行身份伪造：攻击者 {identity_forgery_attacker} 未注册或不存在。")
-            
-            elif current_scenario == TestScenario.REPLAY_ATTACK:
-                if step == attack_trigger_step:
-                    print(f"\n--- 测试场景: {TestScenario.REPLAY_ATTACK} (第一次尝试) (Step: {step}) ---")
-                    if len(captured_for_replay) > 0:
-                        perform_replay_attack_detailed(vehicles, specific_packet_index=0, clear_receiver_nonce_cache=True)
-                    else:
-                        print("  尚无捕获的数据包可供重放 (第一次尝试)。")
+            else: # 其他攻击场景
+                # A. 正常通信阶段 (为重放攻击捕获数据)
+                # 此阶段在注册完成后，攻击开始前运行
+                normal_comm_start_step = REGISTRATION_PHASE_DURATION_STEPS + 1
+                normal_comm_end_step = normal_comm_start_step + NORMAL_COMM_PHASE_DURATION_STEPS
                 
-                if step == attack_trigger_step + 10: # 给第一次重放一些时间，然后再次尝试
-                    print(f"\n--- 测试场景: {TestScenario.REPLAY_ATTACK} (第二次尝试相同Nonce) (Step: {step}) ---")
-                    if len(captured_for_replay) > 0:
-                        attack_defended = perform_replay_attack_detailed(vehicles, specific_packet_index=0, clear_receiver_nonce_cache=False)
-                        if attack_defended: print("  ✅ 对数据包0的重放攻击在第二次尝试时被成功防御。")
-                        else: print("  ❌ 对数据包0的重放攻击在第二次尝试时未被防御！检查Nonce逻辑。")
-                    else:
-                        print("  尚无捕获的数据包可供重放 (第二次尝试)。")
+                if normal_comm_start_step <= step < normal_comm_end_step:
+                    if step % 7 == 0: # 通信频率
+                        if replay_attack_sender in registered_vehicles and replay_attack_receiver in registered_vehicles:
+                            print(f"\n[正常通信阶段] Step {step}: 触发 {replay_attack_sender} 和 {replay_attack_receiver} 之间通信 (用于捕获)")
+                            perform_secure_communication(
+                                replay_attack_sender, replay_attack_receiver,
+                                f"捕获消息 {step} from {replay_attack_sender} to {replay_attack_receiver}",
+                                capture_this_comm=True # 显式要求捕获
+                            )
+                
+                # B. 攻击执行阶段
+                attack_trigger_step = normal_comm_end_step + ATTACK_PHASE_START_OFFSET
 
-            elif current_scenario == TestScenario.ABNORMAL_BEHAVIOR:
-                abnormal_behavior_duration = 30 # 异常行为持续步数
-                if attack_trigger_step <= step < (attack_trigger_step + abnormal_behavior_duration):
-                    if abnormal_behavior_vehicle in current_active_vehicles:
-                        if step % 3 == 0: # 控制异常行为的频率
-                            # print(f"[INFO] Step {step}: 尝试触发车辆 {abnormal_behavior_vehicle} 的异常行为。")
-                            perform_simulated_abnormal_behavior(abnormal_behavior_vehicle, step)
-                elif step == (attack_trigger_step + abnormal_behavior_duration):
-                    if abnormal_behavior_vehicle in current_active_vehicles:
-                        print(f"--- 测试场景: {TestScenario.ABNORMAL_BEHAVIOR} (尝试恢复行为 @ Step {step}) ---")
-                        recover_abnormal_behavior(abnormal_behavior_vehicle)
-            elif current_scenario == TestScenario.REVOKED_CERTIFICATE:
-                if step == attack_trigger_step:
-                    print(f"\n--- 测试场景: {TestScenario.REVOKED_CERTIFICATE} (Step: {step}) ---")
-                    if revoked_cert_attacker_id in registered_vehicles and revoked_cert_victim_id in registered_vehicles:
-                        perform_revoked_certificate_attack(
-                            attacker_id=revoked_cert_attacker_id,
-                            victim_receiver_id=revoked_cert_victim_id,
-                            vehicles_map=vehicles,
-                            main_perform_secure_communication_func=perform_secure_communication,
-                            main_get_certificate_func=get_certificate, # 传递辅助函数
-                            main_verify_certificate_func=verify_certificate # 传递辅助函数
-                        )
-                    else:
-                        print(f"  无法执行吊销证书攻击：车辆 {revoked_cert_attacker_id} 或 {revoked_cert_victim_id} 未注册或不存在。")
-            elif current_scenario == TestScenario.LYING_ATTACK:
-                # if step == attack_trigger_step: 
-                if step % 20 == 0:
-                    print(f"\n--- 测试场景: {TestScenario.LYING_ATTACK} (Step: {step}) ---")
-                    if lying_attacker_id in registered_vehicles and target_receiver_for_lying_attack in registered_vehicles:
-                        print(f"  车辆 {lying_attacker_id} 将尝试对 {target_receiver_for_lying_attack} 发送谎报信息。")
-                        perform_secure_communication(
-                            lying_attacker_id,
-                            target_receiver_for_lying_attack,
-                            message_payload=None, # Payload will be overridden by lying logic
-                            capture_this_comm=True, 
-                            current_scenario_for_attack=current_scenario, 
-                            lying_attacker_id_for_attack=lying_attacker_id 
-                        )
-                    else:
-                        print(f"  无法执行谎报攻击：攻击者 {lying_attacker_id} 或目标接收者 {target_receiver_for_lying_attack} 未注册/不存在。")
+                # 根据命令行选择的场景执行特定攻击
+                if current_scenario == TestScenario.IDENTITY_FORGERY:
+                    if step == attack_trigger_step:
+                        print(f"\n--- 测试场景: {TestScenario.IDENTITY_FORGERY} (Step: {step}) ---")
+                        if identity_forgery_attacker in registered_vehicles:
+                            perform_identity_forgery_attack(attacker_name=identity_forgery_attacker)
+                        else:
+                            print(f"  无法执行身份伪造：攻击者 {identity_forgery_attacker} 未注册或不存在。")
+                
+                elif current_scenario == TestScenario.REPLAY_ATTACK:
+                    if step == attack_trigger_step:
+                        print(f"\n--- 测试场景: {TestScenario.REPLAY_ATTACK} (第一次尝试) (Step: {step}) ---")
+                        if len(captured_for_replay) > 0:
+                            perform_replay_attack_detailed(vehicles, specific_packet_index=0, clear_receiver_nonce_cache=True)
+                        else:
+                            print("  尚无捕获的数据包可供重放 (第一次尝试)。")
+                    
+                    if step == attack_trigger_step + 10: # 给第一次重放一些时间，然后再次尝试
+                        print(f"\n--- 测试场景: {TestScenario.REPLAY_ATTACK} (第二次尝试相同Nonce) (Step: {step}) ---")
+                        if len(captured_for_replay) > 0:
+                            attack_defended = perform_replay_attack_detailed(vehicles, specific_packet_index=0, clear_receiver_nonce_cache=False)
+                            if attack_defended: print("  ✅ 对数据包0的重放攻击在第二次尝试时被成功防御。")
+                            else: print("  ❌ 对数据包0的重放攻击在第二次尝试时未被防御！检查Nonce逻辑。")
+                        else:
+                            print("  尚无捕获的数据包可供重放 (第二次尝试)。")
+
+                elif current_scenario == TestScenario.ABNORMAL_BEHAVIOR:
+                    abnormal_behavior_duration = 30 # 异常行为持续步数
+                    if attack_trigger_step <= step < (attack_trigger_step + abnormal_behavior_duration):
+                        if abnormal_behavior_vehicle in current_active_vehicles:
+                            if step % 3 == 0: # 控制异常行为的频率
+                                # print(f"[INFO] Step {step}: 尝试触发车辆 {abnormal_behavior_vehicle} 的异常行为。")
+                                perform_simulated_abnormal_behavior(abnormal_behavior_vehicle, step)
+                    elif step == (attack_trigger_step + abnormal_behavior_duration):
+                        if abnormal_behavior_vehicle in current_active_vehicles:
+                            print(f"--- 测试场景: {TestScenario.ABNORMAL_BEHAVIOR} (尝试恢复行为 @ Step {step}) ---")
+                            recover_abnormal_behavior(abnormal_behavior_vehicle)
+                elif current_scenario == TestScenario.REVOKED_CERTIFICATE:
+                    if step == attack_trigger_step:
+                        print(f"\n--- 测试场景: {TestScenario.REVOKED_CERTIFICATE} (Step: {step}) ---")
+                        if revoked_cert_attacker_id in registered_vehicles and revoked_cert_victim_id in registered_vehicles:
+                            perform_revoked_certificate_attack(
+                                attacker_id=revoked_cert_attacker_id,
+                                victim_receiver_id=revoked_cert_victim_id,
+                                vehicles_map=vehicles,
+                                main_perform_secure_communication_func=perform_secure_communication,
+                                main_get_certificate_func=get_certificate, # 传递辅助函数
+                                main_verify_certificate_func=verify_certificate # 传递辅助函数
+                            )
+                        else:
+                            print(f"  无法执行吊销证书攻击：车辆 {revoked_cert_attacker_id} 或 {revoked_cert_victim_id} 未注册或不存在。")
+                elif current_scenario == TestScenario.LYING_ATTACK:
+                    # if step == attack_trigger_step: 
+                    if step % 20 == 0:
+                        print(f"\n--- 测试场景: {TestScenario.LYING_ATTACK} (Step: {step}) ---")
+                        if lying_attacker_id in registered_vehicles and target_receiver_for_lying_attack in registered_vehicles:
+                            print(f"  车辆 {lying_attacker_id} 将尝试对 {target_receiver_for_lying_attack} 发送谎报信息。")
+                            perform_secure_communication(
+                                lying_attacker_id,
+                                target_receiver_for_lying_attack,
+                                message_payload=None, # Payload will be overridden by lying logic
+                                capture_this_comm=True, 
+                                current_scenario_for_attack=current_scenario, 
+                                lying_attacker_id_for_attack=lying_attacker_id 
+                            )
+                        else:
+                            print(f"  无法执行谎报攻击：攻击者 {lying_attacker_id} 或目标接收者 {target_receiver_for_lying_attack} 未注册/不存在。")
 
 
         # 更新所有在网车辆的动态属性（在每个阶段的末尾，或只在非注册阶段的开始）

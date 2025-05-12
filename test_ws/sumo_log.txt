@@ -1,15 +1,15 @@
-***Starting server on port 51895 ***
+***Starting server on port 44371 ***
 Loading net-file from './config/test1/net.net.xml' ... done (3ms).
 Loading additional-files from './config/test1/poi.add.xml' ... done (7ms).
 Loading route-files incrementally from './config/test1/modified_routes2_newlong.rou.xml'
 Loading done.
 Simulation started with time: 0.00.
-Simulation ended at time: 30.00.
+Simulation ended at time: 218.00.
 Performance:
- Duration: 6.07s
- TraCI-Duration: 1.02s
- Real time factor: 4.93908
- UPS: 98.123148
+ Duration: 43.59s
+ TraCI-Duration: 7.14s
+ Real time factor: 5.00069
+ UPS: 99.922008
 Vehicles:
  Inserted: 20
  Running: 20

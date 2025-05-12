@@ -193,8 +193,8 @@ def perform_revoked_certificate_attack(
             print(f"    ✅ TA确认车辆 {attacker_id} 的证书已吊销/标记为无效。 ({response.json().get('message')})")
             # 可以选择在本地车辆对象中也标记一下，但这仅为模拟，真实决策依赖TA
             if attacker_id in vehicles_map:
-                 vehicles_map[attacker_id].valid_certification = 0 # 模拟本地状态更新
-                 vehicles_map[attacker_id].trustScore = 0 # 通常吊销会导致信任清零
+                vehicles_map[attacker_id].valid_certification = 0 # 模拟本地状态更新
+                vehicles_map[attacker_id].trustScore = 0 # 通常吊销会导致信任清零
         else:
             print(f"    ❌ TA吊销证书 {attacker_id} 失败: {response.status_code} - {response.text}")
             print(f"  ❌ 攻击中止：无法吊销证书。")
@@ -204,7 +204,7 @@ def perform_revoked_certificate_attack(
         print(f"  ❌ 攻击中止：无法连接TA。")
         return
 
-    # （可选）稍作等待，确保TA状态已更新（如果TA有缓存机制）
+    # 稍作等待，确保TA状态已更新（如果TA有缓存机制）
     time.sleep(1)
 
     # （可选）验证证书确实被吊销了 (通过再次查询或验证)
